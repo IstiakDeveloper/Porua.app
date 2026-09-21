@@ -1,0 +1,26 @@
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('fee_structures', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('fee_type_id')->constrained()->onDelete('cascade');
+            $table->foreignId('class_id')->constrained()->onDelete('cascade');
+            $table->foreignId('academic_year_id')->constrained()->onDelete('cascade');
+            $table->decimal('amount', 10, 2);
+            $table->date('due_date')->nullable();
+            $table->decimal('late_fee', 10, 2)->default(0);
+            $table->integer('late_fee_days')->default(0);
+            $table->timestamps();
+            
+            $table->index(['class_id', 'academic_year_id']);
+            $table->index('fee_type_id');
+        });
+    }
+    public function down(): void { Schema::dropIfExists('fee_structures'); }
+};

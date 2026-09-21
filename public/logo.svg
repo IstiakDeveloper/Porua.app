@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="porua-bg" x1="24" y1="24" x2="488" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="spark-gold" x1="256" y1="120" x2="256" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="inner-leaf-left" x1="160" y1="260" x2="256" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a7f3d0"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="inner-leaf-right" x1="352" y1="260" x2="256" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6ee7b7"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="512" height="512" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#042f2e" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded Squircle App Icon Base -->
+  <rect x="24" y="24" width="464" height="464" rx="110" fill="url(#porua-bg)" filter="url(#shadow)"/>
+  <rect x="24" y="24" width="464" height="464" rx="110" stroke="#ffffff" stroke-width="4" stroke-opacity="0.25"/>
+
+  <!-- Left Open Book Wing / Leaf -->
+  <path d="M256 345L256 220L140 245L130 335L245 352Z" fill="#ffffff" fill-opacity="0.95"/>
+  <path d="M256 335L256 240L160 260L150 325L245 342Z" fill="url(#inner-leaf-left)"/>
+
+  <!-- Right Open Book Wing / Leaf -->
+  <path d="M256 345L256 220L372 245L382 335L267 352Z" fill="#ffffff" fill-opacity="0.88"/>
+  <path d="M256 335L256 240L352 260L362 325L267 342Z" fill="url(#inner-leaf-right)"/>
+
+  <!-- Center Book Spine Crease -->
+  <path d="M256 215L256 355" stroke="#047857" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Golden Knowledge Star / Enlightened Crown -->
+  <polygon points="256,120 274,160 256,200 238,160" fill="url(#spark-gold)"/>
+  <polygon points="256,135 266,160 256,185 246,160" fill="#ffffff"/>
+
+  <!-- Orbiting Knowledge Accent Stars -->
+  <circle cx="201" cy="181" r="6" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="311" cy="181" r="6" fill="#ffffff" fill-opacity="0.85"/>
+
+  <!-- Subtle Bottom Foundation Arc -->
+  <path d="M170 385 Q256 425 342 385" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.4"/>
+</svg>
