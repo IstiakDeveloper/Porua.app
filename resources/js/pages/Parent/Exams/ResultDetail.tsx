@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/Card';
 import Badge from '@/Components/Badge';
 import Button from '@/Components/Button';
-import { ArrowLeft, BookOpen, TrendingUp, Award } from 'lucide-react';
+import { ArrowLeft, BookOpen, TrendingUp, Award, Printer } from 'lucide-react';
 
 interface Mark {
     subject: string;
@@ -46,16 +46,26 @@ export default function ResultDetail({ student, result, marks }: Props) {
 
             <div className="py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6 flex items-center gap-4">
-                        <Link href={route('parent.exams.index')}>
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back
-                            </Button>
-                        </Link>
+                    <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <Link href={route('parent.exams.index')}>
+                                <Button variant="outline" size="sm">
+                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                    Back
+                                </Button>
+                            </Link>
+                            <div>
+                                <h1 className="text-2xl font-bold">{result.exam_name}</h1>
+                                <p className="text-gray-600">Detailed Result for {student.full_name}</p>
+                            </div>
+                        </div>
                         <div>
-                            <h1 className="text-2xl font-bold">{result.exam_name}</h1>
-                            <p className="text-gray-600">Detailed Result for {student.full_name}</p>
+                            <a href={`/results/${result.id}/print`} target="_blank" rel="noopener noreferrer">
+                                <Button className="bg-indigo-600 hover:bg-indigo-700">
+                                    <Printer className="h-4 w-4 mr-2" />
+                                    Print Official Marksheet
+                                </Button>
+                            </a>
                         </div>
                     </div>
 

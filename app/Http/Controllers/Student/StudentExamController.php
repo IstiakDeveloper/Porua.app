@@ -247,25 +247,11 @@ class StudentExamController extends Controller
         $user = Auth::user();
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
-        $result = Result::with(['exam', 'schoolClass', 'student'])
-            ->where('id', $resultId)
+        $result = Result::where('id', $resultId)
             ->where('student_id', $student->id)
             ->where('is_published', true)
             ->firstOrFail();
 
-        // Get subject-wise marks
-        $marks = Mark::with('subject')
-            ->where('exam_id', $result->exam_id)
-            ->where('student_id', $student->id)
-            ->get();
-
-        // TODO: Generate PDF marksheet
-        // For now, return JSON (implement PDF generation later)
-
-        return response()->json([
-            'message' => 'Marksheet download feature will be implemented with PDF generation',
-            'result' => $result,
-            'marks' => $marks,
-        ]);
+        return redirect()->route('results.print', $result->id);
     }
 }

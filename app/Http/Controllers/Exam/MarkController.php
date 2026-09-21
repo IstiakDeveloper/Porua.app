@@ -82,7 +82,21 @@ class MarkController extends Controller
 
         DB::beginTransaction();
         try {
+            $subject = Subject::find($validated['subject_id']);
+            $subjectFullMarks = (float) ($subject->total_marks ?? 100);
+
             foreach ($validated['marks'] as $mark) {
+                $theory = isset($mark['theory_marks']) && $mark['theory_marks'] !== '' ? (float) $mark['theory_marks'] : null;
+                $practical = isset($mark['practical_marks']) && $mark['practical_marks'] !== '' ? (float) $mark['practical_marks'] : null;
+                $obtained = isset($mark['obtained_marks']) 
+                    ? (float) $mark['obtained_marks'] 
+                    : (($theory ?? 0) + ($practical ?? 0));
+                
+                // If total_marks is passed and no theory/practical was specified, use that as obtained
+                if ($obtained == 0 && isset($mark['total_marks']) && $mark['total_marks'] > 0 && $theory === null && $practical === null) {
+                    $obtained = (float) $mark['total_marks'];
+                }
+
                 Mark::updateOrCreate(
                     [
                         'exam_id' => $validated['exam_id'],
@@ -91,12 +105,13 @@ class MarkController extends Controller
                     ],
                     [
                         'class_id' => $validated['class_id'],
-                        'theory_marks' => $mark['theory_marks'] ?? null,
-                        'practical_marks' => $mark['practical_marks'] ?? null,
-                        'total_marks' => $mark['total_marks'],
+                        'theory_marks' => $theory,
+                        'practical_marks' => $practical,
+                        'obtained_marks' => $obtained,
+                        'total_marks' => $subjectFullMarks,
                         'grade' => $mark['grade'] ?? null,
                         'remarks' => $mark['remarks'] ?? null,
-                        'marked_by' => auth()->id(),
+                        'entered_by' => auth()->id(),
                     ]
                 );
             }

@@ -18,6 +18,7 @@ import {
     Calculator,
     BarChart3,
     GraduationCap,
+    Printer,
 } from 'lucide-react';
 import { Result, PaginatedData, ResultFilters, Exam, SchoolClass } from '@/types/exam';
 
@@ -162,7 +163,17 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                             Auto-calculate GPA, merit rankings, publish scorecards, and review student grades
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Link href={`/results/tabulation?exam_id=${examId}&class_id=${classId}`}>
+                            <Button
+                                size="md"
+                                variant="outline"
+                                icon={<Award className="w-4 h-4 text-indigo-600" />}
+                                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                            >
+                                Tabulation Sheet
+                            </Button>
+                        </Link>
                         <Button
                             size="md"
                             variant="outline"
@@ -368,6 +379,15 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                                             </td>
                                             <td className="px-5 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
+                                                    <a
+                                                        href={`/results/${result.id}/print`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                        title="Print Marksheet"
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                    </a>
                                                     <Link
                                                         href={`/results/${result.id}`}
                                                         className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"

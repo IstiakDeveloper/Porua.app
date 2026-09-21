@@ -299,6 +299,8 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::resource('marks', MarkController::class)->except(['show']);
         Route::get('marks/students', [MarkController::class, 'getStudents'])->name('marks.students');
 
+        Route::get('results/tabulation', [ResultController::class, 'tabulation'])->name('results.tabulation');
+        Route::get('results/tabulation/print', [ResultController::class, 'printTabulation'])->name('results.tabulation.print');
         Route::resource('results', ResultController::class)->only(['index', 'show', 'destroy']);
         Route::post('results/generate', [ResultController::class, 'generate'])->name('results.generate');
         Route::post('results/publish', [ResultController::class, 'publish'])->name('results.publish');
@@ -306,6 +308,9 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
 
         Route::resource('grade-settings', GradeSettingController::class)->only(['index', 'store', 'update', 'destroy']);
     });
+
+    // Marksheet Print Route (Accessible to authorized Student, Parent, Staff)
+    Route::get('results/{result}/print', [ResultController::class, 'printMarksheet'])->name('results.print');
 
     // ============================================
     // FEE MANAGEMENT (Super Admin, Principal, Accountant Access)
@@ -634,6 +639,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         // Exams & Results
         Route::get('/exams', [\App\Http\Controllers\Parent\ParentExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/result/{result}', [\App\Http\Controllers\Parent\ParentExamController::class, 'resultDetail'])->name('exams.result');
+        Route::get('/exams/result/{result}/print', [\App\Http\Controllers\Exam\ResultController::class, 'printMarksheet'])->name('exams.result.print');
 
         // Fees
         Route::get('/fees', [\App\Http\Controllers\Parent\ParentFeeController::class, 'index'])->name('fees.index');

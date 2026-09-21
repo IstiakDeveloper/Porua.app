@@ -25,6 +25,8 @@ class Result extends Model
         'is_published',
     ];
 
+    protected $appends = ['status'];
+
     protected function casts(): array
     {
         return [
@@ -36,6 +38,14 @@ class Result extends Model
             'section_position' => 'integer',
             'is_published' => 'boolean',
         ];
+    }
+
+    protected function status(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn () => $this->result_status,
+            set: fn ($value) => ['result_status' => $value],
+        );
     }
 
     public function exam()

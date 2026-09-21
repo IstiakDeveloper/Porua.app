@@ -139,6 +139,11 @@ class Student extends Model
         return $this->belongsTo(SchoolClass::class, 'class_id');
     }
 
+    public function class()
+    {
+        return $this->schoolClass();
+    }
+
     public function section()
     {
         return $this->belongsTo(Section::class);

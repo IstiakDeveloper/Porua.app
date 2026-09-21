@@ -4,32 +4,39 @@ namespace App\Http\Controllers\Exam;
 
 use App\Http\Controllers\Controller;
 use App\Models\Result;
-use App\Models\Mark;
 use App\Models\Exam;
-use App\Models\Student;
-use App\Models\GradeSetting;
+use App\Models\SchoolClass;
+use App\Models\Setting;
+use App\Services\ResultCalculationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ResultController extends Controller
 {
+    protected ResultCalculationService $calculationService;
+
+    public function __construct(ResultCalculationService $calculationService)
+    {
+        $this->calculationService = $calculationService;
+    }
+
     public function index(Request $request)
     {
         $this->authorize('manage_exams');
 
-        $results = Result::with(['student.user', 'exam', 'schoolClass'])
+        $results = Result::with(['student.user', 'student.section', 'exam', 'schoolClass'])
             ->when($request->exam_id, fn($q) => $q->where('exam_id', $request->exam_id))
             ->when($request->class_id, fn($q) => $q->where('class_id', $request->class_id))
             ->when($request->student_id, fn($q) => $q->where('student_id', $request->student_id))
-            ->latest()
+            ->orderBy('class_position')
+            ->latest('id')
             ->paginate(50)->withQueryString();
 
         return Inertia::render('Exams/Results/Index', [
             'results' => $results,
             'filters' => $request->only(['exam_id', 'class_id', 'student_id']),
             'exams' => Exam::all(),
-            'classes' => \App\Models\SchoolClass::where('status', 'active')->get(),
+            'classes' => SchoolClass::where('status', 'active')->get(),
         ]);
     }
 
@@ -42,55 +49,20 @@ class ResultController extends Controller
             'class_id' => 'required|exists:classes,id',
         ]);
 
-        DB::beginTransaction();
         try {
-            // Get all students with marks for this exam
-            $students = Student::where('class_id', $validated['class_id'])
-                ->where('status', 'active')
-                ->get();
+            $outcome = $this->calculationService->generate(
+                (int) $validated['exam_id'],
+                (int) $validated['class_id']
+            );
 
-            foreach ($students as $student) {
-                $marks = Mark::where('exam_id', $validated['exam_id'])
-                    ->where('student_id', $student->id)
-                    ->get();
-
-                if ($marks->isEmpty()) {
-                    continue;
-                }
-
-                $totalMarks = $marks->sum('total_marks');
-                $totalSubjects = $marks->count();
-                $percentage = $totalSubjects > 0 ? ($totalMarks / ($totalSubjects * 100)) * 100 : 0;
-
-                // Calculate grade
-                $grade = $this->calculateGrade($percentage);
-
-                Result::updateOrCreate(
-                    [
-                        'exam_id' => $validated['exam_id'],
-                        'student_id' => $student->id,
-                    ],
-                    [
-                        'class_id' => $validated['class_id'],
-                        'total_marks' => $totalMarks,
-                        'obtained_marks' => $totalMarks,
-                        'percentage' => round($percentage, 2),
-                        'grade' => $grade['grade'],
-                        'gpa' => $grade['gpa'],
-                        'status' => $percentage >= 40 ? 'pass' : 'fail',
-                        'remarks' => $grade['remarks'] ?? null,
-                    ]
-                );
+            if (!$outcome['success']) {
+                return back()->with('error', $outcome['message']);
             }
 
-            DB::commit();
+            logActivity('create', "Generated results for exam ID: {$validated['exam_id']} and class ID: {$validated['class_id']}", Result::class);
 
-            logActivity('create', "Generated results for exam", Result::class);
-
-            return back()->with('success', 'Results generated successfully');
-
+            return back()->with('success', $outcome['message']);
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()->with('error', 'Failed to generate results: ' . $e->getMessage());
         }
     }
@@ -108,9 +80,9 @@ class ResultController extends Controller
             ->where('class_id', $validated['class_id'])
             ->update(['is_published' => true]);
 
-        logActivity('update', "Published exam results", Result::class);
+        logActivity('update', "Published exam results for exam ID {$validated['exam_id']} and class ID {$validated['class_id']}", Result::class);
 
-        return back()->with('success', 'Results published successfully');
+        return back()->with('success', 'Results published successfully. Students and parents can now view their marksheet.');
     }
 
     public function show(Result $result)
@@ -119,6 +91,7 @@ class ResultController extends Controller
 
         $result->load([
             'student.user',
+            'student.section',
             'exam',
             'schoolClass',
             'student.marks' => fn($q) => $q->where('exam_id', $result->exam_id)->with('subject')
@@ -129,45 +102,121 @@ class ResultController extends Controller
         ]);
     }
 
-    public function studentResult(Student $student, Exam $exam)
+    public function tabulation(Request $request)
     {
-        $result = Result::with(['exam', 'schoolClass', 'student.marks' => function($q) use ($exam) {
-            $q->where('exam_id', $exam->id)->with('subject');
-        }])
-            ->where('student_id', $student->id)
-            ->where('exam_id', $exam->id)
-            ->first();
+        $this->authorize('manage_exams');
 
-        if (!$result || !$result->is_published) {
-            abort(404, 'Result not found or not published');
+        $examId = $request->input('exam_id');
+        $classId = $request->input('class_id');
+        $sectionId = $request->input('section_id');
+
+        $exams = Exam::orderBy('created_at', 'desc')->get();
+        $classes = SchoolClass::where('status', 'active')->with('sections')->get();
+
+        // If not specified, default to first available
+        if (!$examId && $exams->isNotEmpty()) {
+            $examId = $exams->first()->id;
+        }
+        if (!$classId && $classes->isNotEmpty()) {
+            $classId = $classes->first()->id;
         }
 
-        return Inertia::render('Exams/Results/Student', [
-            'result' => $result,
+        $tabulationData = null;
+        if ($examId && $classId) {
+            $tabulationData = $this->calculationService->getTabulationData(
+                (int) $examId,
+                (int) $classId,
+                $sectionId ? (int) $sectionId : null
+            );
+        }
+
+        return Inertia::render('Exams/Results/Tabulation', [
+            'exams' => $exams,
+            'classes' => $classes,
+            'filters' => [
+                'exam_id' => (string) $examId,
+                'class_id' => (string) $classId,
+                'section_id' => (string) $sectionId,
+            ],
+            'tabulation' => $tabulationData,
         ]);
     }
 
-    private function calculateGrade($percentage)
+    public function printTabulation(Request $request)
     {
-        $gradeSetting = GradeSetting::where('min_marks', '<=', $percentage)
-            ->where('max_marks', '>=', $percentage)
-            ->first();
+        $this->authorize('manage_exams');
 
-        if ($gradeSetting) {
-            return [
-                'grade' => $gradeSetting->grade_name,
-                'gpa' => $gradeSetting->grade_point,
-                'remarks' => $gradeSetting->remarks,
-            ];
+        $examId = (int) $request->input('exam_id');
+        $classId = (int) $request->input('class_id');
+        $sectionId = $request->input('section_id') ? (int) $request->input('section_id') : null;
+
+        if (!$examId || !$classId) {
+            abort(404, 'Exam and Class must be specified.');
         }
 
-        // Default grading
-        if ($percentage >= 80) return ['grade' => 'A+', 'gpa' => 5.0, 'remarks' => 'Outstanding'];
-        if ($percentage >= 70) return ['grade' => 'A', 'gpa' => 4.0, 'remarks' => 'Excellent'];
-        if ($percentage >= 60) return ['grade' => 'B', 'gpa' => 3.5, 'remarks' => 'Very Good'];
-        if ($percentage >= 50) return ['grade' => 'C', 'gpa' => 3.0, 'remarks' => 'Good'];
-        if ($percentage >= 40) return ['grade' => 'D', 'gpa' => 2.0, 'remarks' => 'Pass'];
-        return ['grade' => 'F', 'gpa' => 0.0, 'remarks' => 'Fail'];
+        $tabulationData = $this->calculationService->getTabulationData($examId, $classId, $sectionId);
+
+        $schoolName = Setting::get('school_name', config('app.name', 'Porua School'));
+        $schoolAddress = Setting::get('school_address', '');
+        $schoolPhone = Setting::get('school_phone', '');
+        $schoolEmail = Setting::get('school_email', '');
+        $schoolLogo = Setting::get('school_logo', '');
+
+        return view('exams.tabulation-print', array_merge($tabulationData, [
+            'schoolName' => $schoolName,
+            'schoolAddress' => $schoolAddress,
+            'schoolPhone' => $schoolPhone,
+            'schoolEmail' => $schoolEmail,
+            'schoolLogo' => $schoolLogo,
+        ]));
+    }
+
+    public function printMarksheet(Result $result)
+    {
+        // Allow student, parent, or staff with permission to view
+        $user = auth()->user();
+        if ($user->hasRole('Student')) {
+            $student = \App\Models\Student::where('user_id', $user->id)->first();
+            if (!$student || $student->id !== $result->student_id || !$result->is_published) {
+                abort(403, 'Unauthorized access to marksheet.');
+            }
+        } elseif ($user->hasRole('Parent')) {
+            $parent = \App\Models\StudentParent::where('user_id', $user->id)->first();
+            if (!$parent || $result->student->parent_id !== $parent->id || !$result->is_published) {
+                abort(403, 'Unauthorized access to marksheet.');
+            }
+        } else {
+            $this->authorize('view_students');
+        }
+
+        $result->load([
+            'student.user',
+            'student.schoolClass',
+            'student.section',
+            'exam.academicYear',
+            'schoolClass',
+            'student.marks' => fn($q) => $q->where('exam_id', $result->exam_id)->with('subject')
+        ]);
+
+        $schoolName = Setting::get('school_name', config('app.name', 'Porua School'));
+        $schoolAddress = Setting::get('school_address', '');
+        $schoolPhone = Setting::get('school_phone', '');
+        $schoolEmail = Setting::get('school_email', '');
+        $schoolLogo = Setting::get('school_logo', '');
+
+        $gradeSettings = \App\Models\GradeSetting::orderBy('min_marks', 'desc')->get();
+
+        return view('exams.marksheet-print', [
+            'result' => $result,
+            'student' => $result->student,
+            'marks' => $result->student->marks,
+            'gradeSettings' => $gradeSettings,
+            'schoolName' => $schoolName,
+            'schoolAddress' => $schoolAddress,
+            'schoolPhone' => $schoolPhone,
+            'schoolEmail' => $schoolEmail,
+            'schoolLogo' => $schoolLogo,
+        ]);
     }
 
     public function destroy(Result $result)
