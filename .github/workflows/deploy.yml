@@ -188,6 +188,21 @@ jobs:
 
           cd "$DEPLOY_PATH"
 
+          echo "Clearing old package manifests..."
+          rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+
+          echo "Discovering packages..."
+          "$PHP" artisan package:discover --ansi
+
+          echo "Running database migrations..."
+          "$PHP" artisan migrate --force --no-interaction
+
+          echo "Refreshing Laravel cache..."
+          "$PHP" artisan config:clear
+          "$PHP" artisan view:clear
+          "$PHP" artisan config:cache
+          "$PHP" artisan view:cache
+
           rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
           "$PHP" artisan package:discover --ansi
 
