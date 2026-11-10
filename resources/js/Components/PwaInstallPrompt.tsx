@@ -61,9 +61,16 @@ export default function PwaInstallPrompt() {
         window.addEventListener('beforeinstallprompt', handleBeforeInstall);
         window.addEventListener('appinstalled', handleAppInstalled);
 
+        // Allow opening the prompt manually from any button in the app
+        const handleManualTrigger = () => {
+            setShowPrompt(true);
+        };
+        window.addEventListener('porua:show-install-prompt', handleManualTrigger);
+
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
             window.removeEventListener('appinstalled', handleAppInstalled);
+            window.removeEventListener('porua:show-install-prompt', handleManualTrigger);
         };
     }, []);
 
@@ -164,4 +171,13 @@ export default function PwaInstallPrompt() {
         </div>
     );
 }
+
+/**
+ * Trigger the PWA install dialog from anywhere in the app
+ */
+export const openPwaInstallPrompt = () => {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('porua:show-install-prompt'));
+    }
+};
 
