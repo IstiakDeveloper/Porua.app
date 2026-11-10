@@ -66,6 +66,7 @@ jobs:
           test -f artisan
           test -f vendor/autoload.php
           test -f public/build/manifest.json
+          test -f public/manifest.webmanifest
 
           echo "Laravel and Vite build verified"
 
@@ -92,6 +93,17 @@ jobs:
           # Current Hostinger layout uses root /build
           mkdir -p deployment-package/build
           cp -a public/build/. deployment-package/build/
+
+          # Copy PWA assets & manifest to root for Hostinger root-level routing
+          cp -a public/manifest.webmanifest deployment-package/ 2>/dev/null || true
+          cp -a public/manifest.json deployment-package/ 2>/dev/null || true
+          cp -a public/sw.js deployment-package/ 2>/dev/null || true
+          cp -a public/sw-custom.js deployment-package/ 2>/dev/null || true
+          cp -r public/pwa deployment-package/ 2>/dev/null || true
+          cp -r public/.well-known deployment-package/ 2>/dev/null || true
+          cp -a public/favicon.ico deployment-package/ 2>/dev/null || true
+          cp -a public/logo.png deployment-package/ 2>/dev/null || true
+          cp -a public/logo.svg deployment-package/ 2>/dev/null || true
 
           # Preserve existing custom web entry files
           rm -f deployment-package/index.php

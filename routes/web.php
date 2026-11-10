@@ -121,6 +121,49 @@ Route::get('/sw.js', function () {
     abort(404);
 });
 
+// PWA Manifest and Asset Fallback Routes (Ensures 100% Hostinger & Reverse Proxy compatibility)
+Route::get('/manifest.webmanifest', function () {
+    $path = public_path('manifest.webmanifest');
+    if (!file_exists($path)) {
+        $path = base_path('manifest.webmanifest');
+    }
+    abort_unless(file_exists($path), 404);
+    return response()->file($path, [
+        'Content-Type' => 'application/manifest+json; charset=utf-8',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+Route::get('/manifest.json', function () {
+    $path = public_path('manifest.json');
+    if (!file_exists($path)) {
+        $path = base_path('manifest.json');
+    }
+    abort_unless(file_exists($path), 404);
+    return response()->file($path, [
+        'Content-Type' => 'application/manifest+json; charset=utf-8',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+Route::get('/.well-known/assetlinks.json', function () {
+    $path = public_path('.well-known/assetlinks.json');
+    abort_unless(file_exists($path), 404);
+    return response()->file($path, [
+        'Content-Type' => 'application/json; charset=utf-8',
+    ]);
+});
+
+Route::get('/pwa/{any}', function ($any) {
+    $path = public_path('pwa/' . $any);
+    abort_unless(file_exists($path), 404);
+    $mime = str_ends_with($path, '.png') ? 'image/png' : (str_ends_with($path, '.json') ? 'application/json' : 'application/octet-stream');
+    return response()->file($path, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=604800',
+    ]);
+})->where('any', '.*');
+
 Route::get('/setup', [OnboardingController::class, 'show'])->name('onboarding.wizard');
 Route::post('/setup', [OnboardingController::class, 'save'])->name('onboarding.save');
 

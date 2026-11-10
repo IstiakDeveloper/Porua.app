@@ -17,6 +17,21 @@
 
         <link rel="manifest" href="/manifest.webmanifest">
 
+        <!-- Early PWA Install Prompt & Service Worker Registration Hook -->
+        <script>
+            window.__pwaInstallPrompt = null;
+            window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+                window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+            });
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+                });
+            }
+        </script>
+
         @php
             $inst = \Illuminate\Support\Facades\Cache::get('global_institute_settings');
             $appName = $inst['institute_name'] ?? $inst['school_name'] ?? config('app.name', 'Porua.app');

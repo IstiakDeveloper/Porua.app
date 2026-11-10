@@ -2,7 +2,9 @@ import React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useInstitute } from '@/hooks/useInstitute';
 import { useTerminology, Terminology } from '@/hooks/useTerminology';
+import { openPwaInstallPrompt } from '@/Components/PwaInstallPrompt';
 import {
+    Download,
     LayoutDashboard,
     Users,
     GraduationCap,
@@ -551,6 +553,18 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
                         </div>
                     ))}
                 </nav>
+
+                {/* PWA Install Button in Sidebar Footer */}
+                <div className="p-3 border-t border-gray-100 bg-gray-50/50 mt-auto shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => openPwaInstallPrompt()}
+                        className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 text-xs font-bold transition-all shadow-xs"
+                    >
+                        <Download className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Install Porua App</span>
+                    </button>
+                </div>
             </aside>
         </>
     );
