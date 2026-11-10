@@ -18,12 +18,14 @@ export default defineConfig({
             formVariants: true,
         }),
         VitePWA({
-            registerType: 'prompt',
+            registerType: 'autoUpdate',
             strategies: 'generateSW',
             manifest: false,
             scope: '/',
             workbox: {
                 cleanupOutdatedCaches: true,
+                skipWaiting: true,
+                clientsClaim: true,
                 importScripts: ['/sw-custom.js'],
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
                 navigateFallback: '/offline',
