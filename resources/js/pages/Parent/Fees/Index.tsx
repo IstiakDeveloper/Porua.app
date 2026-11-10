@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/Card';
 import Badge from '@/Components/Badge';
 import Button from '@/Components/Button';
 import Select from '@/Components/Select';
-import { DollarSign, Calendar, CheckCircle, XCircle, AlertTriangle, FileText } from 'lucide-react';
+import { DollarSign, Calendar, CheckCircle, XCircle, AlertTriangle, FileText, Wallet } from 'lucide-react';
 
 interface Child {
     id: number;
@@ -36,7 +36,7 @@ interface FeeCollection {
 }
 
 interface Props {
-    student: Student;
+    student: Student | null;
     children: Child[];
     feeCollections: FeeCollection[];
     summary: {
@@ -89,30 +89,42 @@ export default function Index({ student, children, feeCollections, summary }: Pr
                         <p className="text-gray-600">View your child's fee payment history</p>
                     </div>
 
-                    {/* Student Selector */}
-                    <Card className="mb-6">
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Select
-                                        label="Select Child"
-                                        value={student.id.toString()}
-                                        onChange={(e) => handleStudentChange(e.target.value)}
-                                        options={children.map((child) => ({
-                                            value: child.id.toString(),
-                                            label: child.full_name
-                                        }))}
-                                    />
-                                </div>
-                                <div className="flex items-end">
-                                    <div className="text-sm">
-                                        <p className="text-gray-600">Class</p>
-                                        <p className="font-medium">{student.class_name} - {student.section_name}</p>
-                                    </div>
-                                </div>
+                    {!student || children.length === 0 ? (
+                        <div className="bg-white rounded-xl shadow-xs border border-gray-100 p-12 text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                <Wallet className="w-8 h-8" />
                             </div>
-                        </CardContent>
-                    </Card>
+                            <h3 className="text-lg font-bold text-slate-800">No Student Linked Yet</h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                                There are currently no students linked to your parent account. Please contact school administration to link your child's profile.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Student Selector */}
+                            <Card className="mb-6">
+                                <CardContent className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Select
+                                                label="Select Child"
+                                                value={student.id.toString()}
+                                                onChange={(e) => handleStudentChange(e.target.value)}
+                                                options={children.map((child) => ({
+                                                    value: child.id.toString(),
+                                                    label: child.full_name
+                                                }))}
+                                            />
+                                        </div>
+                                        <div className="flex items-end">
+                                            <div className="text-sm">
+                                                <p className="text-gray-600">Class</p>
+                                                <p className="font-medium">{student.class_name} - {student.section_name}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -258,6 +270,8 @@ export default function Index({ student, children, feeCollections, summary }: Pr
                             )}
                         </CardContent>
                     </Card>
+                    </>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

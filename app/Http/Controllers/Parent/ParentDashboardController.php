@@ -19,18 +19,27 @@ class ParentDashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
-        // Get all children
+        // Get all children linked directly or through pivot
         $children = Student::where('parent_id', $parent->id)
-            ->with(['class', 'section'])
+            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
+            ->with(['schoolClass', 'section'])
             ->get();
 
         // Get today's attendance for all children
         $todayAttendance = [];
         foreach ($children as $child) {
             $attendance = StudentAttendance::where('student_id', $child->id)
-                ->where('attendance_date', Carbon::today())
+                ->where('date', Carbon::today())
                 ->first();
 
             $todayAttendance[$child->id] = [
@@ -58,7 +67,7 @@ class ParentDashboardController extends Controller
             $outstanding = FeeCollection::where('student_id', $child->id)->outstanding()->get();
 
             $feeStatus[$child->id] = [
-                'total_due' => $outstanding->sum(fn ($fee) => $fee->remaining),
+                'total_due' => (float) $outstanding->sum(fn ($fee) => $fee->remaining),
                 'overdue_count' => $outstanding->where('status', 'overdue')->count(),
             ];
         }
@@ -67,7 +76,8 @@ class ParentDashboardController extends Controller
         $recentNotices = Notice::where('is_published', true)
             ->where(function ($query) {
                 $query->whereJsonContains('target_audience', 'Parent')
-                    ->orWhereJsonContains('target_audience', 'All');
+                    ->orWhereJsonContains('target_audience', 'All')
+                    ->orWhereJsonContains('target_audience', 'all');
             })
             ->orderBy('created_at', 'desc')
             ->take(5)
@@ -81,10 +91,10 @@ class ParentDashboardController extends Controller
         return Inertia::render('Parent/Dashboard', [
             'parent' => [
                 'id' => $parent->id,
-                'father_name' => $parent->father_name,
-                'mother_name' => $parent->mother_name,
-                'phone' => $parent->phone,
-                'email' => $parent->email,
+                'father_name' => $parent->father_name ?? $user->name,
+                'mother_name' => $parent->mother_name ?? '',
+                'phone' => $parent->phone ?? $user->phone ?? '',
+                'email' => $parent->email ?? $user->email,
             ],
             'children' => $children->map(function ($child) use ($todayAttendance, $recentResults, $feeStatus) {
                 return [
@@ -93,7 +103,7 @@ class ParentDashboardController extends Controller
                     'admission_number' => $child->admission_number,
                     'roll_number' => $child->roll_number,
                     'photo' => $child->photo,
-                    'class_name' => $child->class->name ?? 'N/A',
+                    'class_name' => $child->schoolClass->name ?? 'N/A',
                     'section_name' => $child->section->name ?? 'N/A',
                     'today_attendance' => $todayAttendance[$child->id] ?? ['status' => 'not_marked'],
                     'recent_results' => $recentResults[$child->id] ?? [],

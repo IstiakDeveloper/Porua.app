@@ -29,6 +29,7 @@ trait HasRoles
 
         if ($roleId && !$this->roles->contains($roleId)) {
             $this->roles()->attach($roleId);
+            $this->unsetRelation('roles');
         }
 
         return $this;
@@ -60,6 +61,7 @@ trait HasRoles
 
         if ($roleId) {
             $this->roles()->detach($roleId);
+            $this->unsetRelation('roles');
         }
 
         return $this;
@@ -71,6 +73,7 @@ trait HasRoles
     public function removeAllRoles(): self
     {
         $this->roles()->detach();
+        $this->unsetRelation('roles');
         return $this;
     }
 
@@ -90,6 +93,7 @@ trait HasRoles
         })->filter()->toArray();
 
         $this->roles()->sync($roleIds);
+        $this->unsetRelation('roles');
         return $this;
     }
 

@@ -69,6 +69,7 @@ export default function Index({
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDate = e.target.value;
+        if (!student) return;
         router.get(route('parent.attendance.index'), {
             student_id: student.id,
             date: newDate
@@ -162,6 +163,18 @@ export default function Index({
                         <p className="text-gray-600 mt-1">View your child's daily attendance information</p>
                     </div>
 
+                    {!student || children.length === 0 ? (
+                        <div className="bg-white rounded-xl shadow-xs border border-gray-100 p-12 text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                                <Calendar className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800">No Student Linked Yet</h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                                There are currently no students linked to your parent account. Please contact school administration to link your child's profile.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
                     {/* Filters Card */}
                     <div className="bg-white rounded-lg shadow-md mb-6">
                         <div className="p-6">
@@ -362,6 +375,8 @@ export default function Index({
                             </div>
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

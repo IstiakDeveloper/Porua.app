@@ -33,8 +33,8 @@ class StudentMessageController extends Controller
                     'is_read' => !is_null($message->read_at),
                     'read_at' => $message->read_at?->format('d M Y h:i A'),
                     'sent_at' => $message->created_at->format('d M Y h:i A'),
-                    'has_attachment' => false, // Add attachment logic if needed
-                    'reply_to' => $message->reply_to,
+                    'has_attachment' => !empty($message->attachment),
+                    'reply_to' => $message->parent_message_id,
                 ];
             });
 
@@ -54,8 +54,8 @@ class StudentMessageController extends Controller
                     'is_read' => !is_null($message->read_at),
                     'read_at' => $message->read_at?->format('d M Y h:i A'),
                     'sent_at' => $message->created_at->format('d M Y h:i A'),
-                    'has_attachment' => false, // Add attachment logic if needed
-                    'reply_to' => $message->reply_to,
+                    'has_attachment' => !empty($message->attachment),
+                    'reply_to' => $message->parent_message_id,
                 ];
             });
 
@@ -124,7 +124,10 @@ class StudentMessageController extends Controller
 
         // Mark as read if receiver is viewing
         if ($message->receiver_id === $user->id && is_null($message->read_at)) {
-            $message->update(['read_at' => now()]);
+            $message->update([
+                'read_at' => now(),
+                'is_read' => true,
+            ]);
         }
 
         return Inertia::render('Student/Messages/Show', [
@@ -140,9 +143,9 @@ class StudentMessageController extends Controller
                 'is_read' => !is_null($message->read_at),
                 'read_at' => $message->read_at?->format('d M Y h:i A'),
                 'sent_at' => $message->created_at->format('d M Y h:i A'),
-                'has_attachment' => false, // Add attachment logic if needed
-                'attachments' => [], // Add attachments if needed
-                'reply_to' => $message->reply_to ?? null,
+                'has_attachment' => !empty($message->attachment),
+                'attachments' => $message->attachment ? [$message->attachment] : [],
+                'reply_to' => $message->parent_message_id ?? null,
             ],
             'can_reply' => $message->receiver_id === $user->id, // Can only reply if you're the receiver
         ]);
@@ -173,7 +176,8 @@ class StudentMessageController extends Controller
             'receiver_id' => $receiverId,
             'subject' => 'Re: ' . $originalMessage->subject,
             'message' => $validated['message'],
-            'parent_id' => $originalMessage->id,
+            'parent_message_id' => $originalMessage->id,
+            'is_read' => false,
         ]);
 
         return back()->with('success', 'Reply sent successfully!');

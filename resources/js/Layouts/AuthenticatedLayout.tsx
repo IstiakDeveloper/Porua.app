@@ -45,7 +45,7 @@ export default function AuthenticatedLayout({ children, header }: AuthenticatedL
                     onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
                     isMobileMenuOpen={mobileMenuOpen}
                 />
-                <main className={`pt-14 pb-24 md:pb-6 px-3 sm:px-6 ${layoutClass}`}>
+                <main className={`pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))] md:pb-6 px-3 sm:px-6 ${layoutClass}`}>
                     <div className="max-w-[1600px] mx-auto">
                         {children}
                     </div>

@@ -153,10 +153,22 @@ class DatabaseSeeder extends Seeder
         // Assign permissions to Teacher
         $teacherPermissions = Permission::whereIn('name', [
             'view_students', 'view_classes', 'view_attendance', 'mark_attendance',
-            'manage_exams', 'view_results',
-            'manage_notices', 'send_messages',
+            'manage_exams', 'view_results', 'view_marks', 'enter_marks', 'edit_marks',
+            'manage_notices', 'view_notices', 'send_messages',
         ])->pluck('id');
         $teacher->permissions()->sync($teacherPermissions->toArray());
+
+        // Assign permissions to Student
+        $studentPermissions = Permission::whereIn('name', [
+            'view_attendance', 'view_results', 'view_fees', 'view_books', 'view_notices', 'send_messages',
+        ])->pluck('id');
+        $studentRole->permissions()->sync($studentPermissions->toArray());
+
+        // Assign permissions to Parent
+        $parentPermissions = Permission::whereIn('name', [
+            'view_attendance', 'view_results', 'view_fees', 'view_notices', 'send_messages',
+        ])->pluck('id');
+        $parentRole->permissions()->sync($parentPermissions->toArray());
 
         // Assign permissions to Accountant
         $accountantPermissions = Permission::whereIn('name', [

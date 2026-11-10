@@ -15,24 +15,46 @@ class ParentAttendanceController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
         $studentId = $request->input('student_id');
         $date = $request->input('date', Carbon::now()->format('Y-m-d'));
 
+        // Get all children for dropdown (direct parent_id or pivot)
+        $children = Student::where('parent_id', $parent->id)
+            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
+            ->with(['schoolClass', 'section'])
+            ->get();
+
         if (!$studentId) {
-            // Get first child by default
-            $student = Student::where('parent_id', $parent->id)->first();
-            if (!$student) {
-                abort(404, 'No children found.');
-            }
-            $studentId = $student->id;
+            $student = $children->first();
+            $studentId = $student?->id;
         } else {
-            $student = Student::where('parent_id', $parent->id)->findOrFail($studentId);
+            $student = $children->firstWhere('id', (int) $studentId);
         }
 
-        // Get all children for dropdown
-        $children = Student::where('parent_id', $parent->id)->get();
+        if (!$student) {
+            return Inertia::render('Parent/Attendance/Index', [
+                'student' => null,
+                'children' => [],
+                'selectedDate' => $date,
+                'attendanceRecord' => null,
+                'monthlySummary' => [
+                    'present' => 0, 'absent' => 0, 'late' => 0, 'half_day' => 0, 'total_days' => 0,
+                ],
+                'yearlySummary' => [
+                    'present' => 0, 'absent' => 0, 'late' => 0, 'total_days' => 0,
+                ],
+            ]);
+        }
 
         // Get attendance record for the selected date
         $attendanceRecord = StudentAttendance::where('student_id', $studentId)
@@ -71,7 +93,7 @@ class ParentAttendanceController extends Controller
                 'id' => $student->id,
                 'full_name' => $student->full_name,
                 'roll_number' => $student->roll_number,
-                'class_name' => $student->class->name ?? 'N/A',
+                'class_name' => $student->schoolClass->name ?? 'N/A',
                 'section_name' => $student->section->name ?? 'N/A',
             ],
             'children' => $children->map(fn($c) => [

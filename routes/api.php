@@ -41,3 +41,10 @@ Route::prefix('zkteco')->group(function () {
     Route::get('/holidays', [DeviceSettingController::class, 'getHolidays']);
     Route::post('/check-working-day', [DeviceSettingController::class, 'checkWorkingDay']);
 });
+
+// PWA Web Push Subscription API Routes
+Route::prefix('pwa')->group(function () {
+    Route::get('/vapid-public-key', [\App\Http\Controllers\Pwa\PwaSubscriptionController::class, 'vapidPublicKey']);
+    Route::post('/subscribe', [\App\Http\Controllers\Pwa\PwaSubscriptionController::class, 'subscribe']);
+    Route::post('/unsubscribe', [\App\Http\Controllers\Pwa\PwaSubscriptionController::class, 'unsubscribe']);
+});

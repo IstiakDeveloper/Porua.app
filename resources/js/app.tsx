@@ -4,6 +4,8 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import GlobalLoadingIndicator from './Components/GlobalLoadingIndicator';
+import PwaInstallPrompt from './Components/PwaInstallPrompt';
+import PwaUpdateToast from './Components/PwaUpdateToast';
 
 // Stale service workers (often from production/PWA) intercept Vite HMR and throw
 // "Failed to convert value to 'Response'" — clear them in local development.
@@ -37,6 +39,8 @@ createInertiaApp({
             <>
                 <App {...props} />
                 <GlobalLoadingIndicator />
+                <PwaInstallPrompt />
+                <PwaUpdateToast />
             </>
         );
     },

@@ -83,6 +83,7 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
             { name: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
             { name: 'Dashboard', href: '/teacher/dashboard', icon: <LayoutDashboard className={iconClass} />, roles: ['Teacher'] },
             { name: 'Dashboard', href: '/student/dashboard', icon: <LayoutDashboard className={iconClass} />, roles: ['Student'] },
+            { name: 'Dashboard', href: '/parent/dashboard', icon: <LayoutDashboard className={iconClass} />, roles: ['Parent'] },
         ],
     },
     {
@@ -229,7 +230,43 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
         ],
     },
     {
+        title: 'Student Portal',
+        roles: ['Student'],
+        items: [
+            { name: 'My Profile', href: '/student/profile', icon: <User className={iconClass} />, roles: ['Student'] },
+            { name: 'Attendance', href: '/student/attendance', icon: <ClipboardCheck className={iconClass} />, roles: ['Student'] },
+            {
+                name: 'Exams & Results',
+                icon: <Award className={iconClass} />,
+                roles: ['Student'],
+                children: [
+                    { name: 'My Exams', href: '/student/exams', icon: <FileText className={iconClass} />, roles: ['Student'] },
+                    { name: 'My Results', href: '/student/results', icon: <Trophy className={iconClass} />, roles: ['Student'] },
+                ],
+            },
+            { name: 'Fees & Invoices', href: '/student/fees', icon: <DollarSign className={iconClass} />, roles: ['Student'] },
+            { name: 'Library', href: '/student/library', icon: <Library className={iconClass} />, roles: ['Student'] },
+            { name: 'Notices', href: '/student/notices', icon: <Megaphone className={iconClass} />, roles: ['Student'] },
+            { name: 'Events', href: '/student/events', icon: <CalendarDays className={iconClass} />, roles: ['Student'] },
+            { name: 'Messages', href: '/student/messages', icon: <Bell className={iconClass} />, roles: ['Student'] },
+        ],
+    },
+    {
+        title: 'Family Portal',
+        roles: ['Parent'],
+        items: [
+            { name: 'My Children', href: '/parent/children', icon: <Users className={iconClass} />, roles: ['Parent'] },
+            { name: 'Attendance', href: '/parent/attendance', icon: <ClipboardCheck className={iconClass} />, roles: ['Parent'] },
+            { name: 'Exams & Results', href: '/parent/exams', icon: <Award className={iconClass} />, roles: ['Parent'] },
+            { name: 'Fees & Invoices', href: '/parent/fees', icon: <DollarSign className={iconClass} />, roles: ['Parent'] },
+            { name: 'Notices', href: '/parent/notices', icon: <Megaphone className={iconClass} />, roles: ['Parent'] },
+            { name: 'Messages', href: '/parent/messages', icon: <Bell className={iconClass} />, roles: ['Parent'] },
+            { name: 'My Profile', href: '/parent/profile', icon: <User className={iconClass} />, roles: ['Parent'] },
+        ],
+    },
+    {
         title: 'Communication & Library',
+        roles: ['Super Admin', 'Admin', 'Principal', 'Teacher', 'Librarian'],
         items: [
             {
                 name: 'Library',
@@ -243,23 +280,6 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
             { name: 'Notices', href: '/notices', icon: <Megaphone className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
             { name: 'Notices', href: '/teacher/notices', icon: <Megaphone className={iconClass} />, roles: ['Teacher'] },
             { name: 'Messages', href: '/teacher/messages', icon: <Bell className={iconClass} />, roles: ['Teacher'] },
-            // Student items
-            { name: 'Profile', href: '/student/profile', icon: <User className={iconClass} />, roles: ['Student'] },
-            { name: 'Attendance', href: '/student/attendance', icon: <ClipboardCheck className={iconClass} />, roles: ['Student'] },
-            {
-                name: 'Exams & Results',
-                icon: <Award className={iconClass} />,
-                roles: ['Student'],
-                children: [
-                    { name: 'My Exams', href: '/student/exams', icon: <FileText className={iconClass} />, roles: ['Student'] },
-                    { name: 'My Results', href: '/student/results', icon: <Trophy className={iconClass} />, roles: ['Student'] },
-                ],
-            },
-            { name: 'Fees', href: '/student/fees', icon: <DollarSign className={iconClass} />, roles: ['Student'] },
-            { name: 'Library', href: '/student/library', icon: <Library className={iconClass} />, roles: ['Student'] },
-            { name: 'Messages', href: '/student/messages', icon: <Bell className={iconClass} />, roles: ['Student'] },
-            { name: 'Notices', href: '/student/notices', icon: <Megaphone className={iconClass} />, roles: ['Student'] },
-            { name: 'Events', href: '/student/events', icon: <CalendarDays className={iconClass} />, roles: ['Student'] },
         ],
     },
     {

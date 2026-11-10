@@ -16,21 +16,38 @@ class ParentExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
         $studentId = $request->input('student_id');
 
+        $children = Student::where('parent_id', $parent->id)
+            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
+            ->with(['schoolClass', 'section'])
+            ->get();
+
         if (!$studentId) {
-            $student = Student::where('parent_id', $parent->id)->first();
-            if (!$student) {
-                abort(404, 'No children found.');
-            }
-            $studentId = $student->id;
+            $student = $children->first();
+            $studentId = $student?->id;
         } else {
-            $student = Student::where('parent_id', $parent->id)->findOrFail($studentId);
+            $student = $children->firstWhere('id', (int) $studentId);
         }
 
-        $children = Student::where('parent_id', $parent->id)->get();
+        if (!$student) {
+            return Inertia::render('Parent/Exams/Index', [
+                'student' => null,
+                'children' => [],
+                'upcomingExams' => [],
+                'results' => [],
+            ]);
+        }
 
         // Get upcoming exam schedules for this student's class
         $upcomingExams = ExamSchedule::with(['exam', 'subject'])
@@ -95,14 +112,30 @@ class ParentExamController extends Controller
     public function resultDetail(Request $request, $id)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
-        $result = Result::with(['exam', 'student.schoolClass', 'student.section'])
+        $result = Result::with(['exam', 'student.schoolClass', 'student.section', 'student.parents'])
             ->findOrFail($id);
 
-        // Verify parent has access
-        if ($result->student->parent_id !== $parent->id) {
+        // Verify parent has access to this student
+        $isParentChild = ($result->student->parent_id === $parent->id)
+            || $result->student->parents->contains('id', $parent->id);
+
+        if (!$isParentChild) {
             abort(403, 'Unauthorized access.');
+        }
+
+        // Only allow viewing published results
+        if (!$result->is_published) {
+            abort(403, 'This exam result has not been published yet.');
         }
 
         // Get subject-wise marks

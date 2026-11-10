@@ -1,0 +1,179 @@
+{
+    "id": "/?source=pwa",
+    "name": "Porua - Smart School Management",
+    "short_name": "Porua",
+    "description": "Comprehensive School & Madrasah ERP for Attendance, Fees, Exams & Real-time Communication.",
+    "start_url": "/dashboard?source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "display_override": [
+        "window-controls-overlay",
+        "standalone",
+        "minimal-ui"
+    ],
+    "orientation": "portrait-primary",
+    "background_color": "#ffffff",
+    "theme_color": "#4f46e5",
+    "lang": "en",
+    "dir": "ltr",
+    "categories": [
+        "education",
+        "productivity",
+        "utilities"
+    ],
+    "icons": [
+        {
+            "src": "/pwa/icons/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-152x152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-384x384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa/icons/icon-maskable-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/pwa/icons/icon-maskable-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/pwa/icons/badge-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "monochrome"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/pwa/screenshots/screenshot-mobile-dashboard.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Student & Parent Portal Dashboard"
+        },
+        {
+            "src": "/pwa/screenshots/screenshot-mobile-attendance.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Classroom Attendance Tracking"
+        },
+        {
+            "src": "/pwa/screenshots/screenshot-mobile-fees.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Fee Payment & Digital Receipts"
+        },
+        {
+            "src": "/pwa/screenshots/screenshot-desktop-dashboard.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Administrative Executive Dashboard"
+        },
+        {
+            "src": "/pwa/screenshots/screenshot-desktop-academics.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Academic, Examination & Routine Management"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Mark Attendance",
+            "short_name": "Attendance",
+            "description": "Quickly record daily student attendance",
+            "url": "/teacher/attendance",
+            "icons": [
+                {
+                    "src": "/pwa/icons/icon-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "My Children",
+            "short_name": "Children",
+            "description": "View linked student profiles and academic records",
+            "url": "/parent/children",
+            "icons": [
+                {
+                    "src": "/pwa/icons/icon-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "Exam Routine",
+            "short_name": "Exams",
+            "description": "View scheduled exam timetable and results",
+            "url": "/student/exams",
+            "icons": [
+                {
+                    "src": "/pwa/icons/icon-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "Fee Records",
+            "short_name": "Fees",
+            "description": "Check due fees and payment history",
+            "url": "/parent/fees",
+            "icons": [
+                {
+                    "src": "/pwa/icons/icon-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ]
+}

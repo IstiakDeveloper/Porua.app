@@ -102,6 +102,25 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
+Route::get('/offline', function () {
+    return \Inertia\Inertia::render('Offline');
+})->name('offline');
+
+Route::get('/sw.js', function () {
+    $path = public_path('build/sw.js');
+    if (!file_exists($path)) {
+        $path = public_path('sw.js');
+    }
+    if (file_exists($path)) {
+        return response()->file($path, [
+            'Content-Type' => 'application/javascript',
+            'Service-Worker-Allowed' => '/',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+    abort(404);
+});
+
 Route::get('/setup', [OnboardingController::class, 'show'])->name('onboarding.wizard');
 Route::post('/setup', [OnboardingController::class, 'save'])->name('onboarding.save');
 

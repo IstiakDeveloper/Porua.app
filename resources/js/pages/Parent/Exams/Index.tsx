@@ -64,6 +64,18 @@ export default function Index({ student, children, upcomingExams, results }: Pro
                         <p className="text-gray-600">View upcoming exams and published results</p>
                     </div>
 
+                    {!student || children.length === 0 ? (
+                        <div className="bg-white rounded-xl shadow-xs border border-gray-100 p-12 text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                                <BookOpen className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800">No Student Linked Yet</h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                                There are currently no students linked to your parent account. Please contact school administration to link your child's profile.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
                     {/* Student Selector */}
                     <Card className="mb-6">
                         <CardContent className="p-6">
@@ -204,6 +216,8 @@ export default function Index({ student, children, upcomingExams, results }: Pro
                             </Card>
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

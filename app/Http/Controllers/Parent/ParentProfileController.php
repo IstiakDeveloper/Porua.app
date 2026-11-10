@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Parent;
 
 use App\Http\Controllers\Controller;
 use App\Models\StudentParent;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -15,34 +16,45 @@ class ParentProfileController extends Controller
     public function show(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)
-            ->with('children.class', 'children.section')
-            ->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
+
+        $children = Student::where('parent_id', $parent->id)
+            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
+            ->with(['schoolClass', 'section'])
+            ->get();
 
         return Inertia::render('Parent/Profile', [
             'parent' => [
                 'id' => $parent->id,
-                'father_name' => $parent->father_name,
-                'father_occupation' => $parent->father_occupation,
-                'father_phone' => $parent->father_phone,
-                'mother_name' => $parent->mother_name,
-                'mother_occupation' => $parent->mother_occupation,
-                'mother_phone' => $parent->mother_phone,
-                'phone' => $parent->phone,
-                'email' => $parent->email,
-                'address' => $parent->address,
-                'city' => $parent->city,
-                'state' => $parent->state,
-                'postal_code' => $parent->postal_code,
+                'father_name' => $parent->father_name ?? $user->name,
+                'father_occupation' => $parent->father_occupation ?? '',
+                'father_phone' => $parent->father_phone ?? '',
+                'mother_name' => $parent->mother_name ?? '',
+                'mother_occupation' => $parent->mother_occupation ?? '',
+                'mother_phone' => $parent->mother_phone ?? '',
+                'phone' => $parent->phone ?? $user->phone ?? '',
+                'email' => $parent->email ?? $user->email,
+                'address' => $parent->address ?? '',
+                'city' => '',
+                'state' => '',
+                'postal_code' => '',
                 'photo' => $parent->photo,
             ],
-            'children' => $parent->children->map(function ($child) {
+            'children' => $children->map(function ($child) {
                 return [
                     'id' => $child->id,
                     'full_name' => $child->full_name,
                     'admission_number' => $child->admission_number,
                     'photo' => $child->photo,
-                    'class_name' => $child->class->name ?? 'N/A',
+                    'class_name' => $child->schoolClass->name ?? 'N/A',
                     'section_name' => $child->section->name ?? 'N/A',
                 ];
             }),
@@ -52,20 +64,37 @@ class ParentProfileController extends Controller
     public function update(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:255'],
             'address' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
             'father_phone' => ['nullable', 'string', 'max:20'],
             'mother_phone' => ['nullable', 'string', 'max:20'],
         ]);
 
-        $parent->update($validated);
+        $parent->update([
+            'phone' => $validated['phone'],
+            'email' => $validated['email'],
+            'address' => $validated['address'] ?? null,
+            'father_phone' => $validated['father_phone'] ?? null,
+            'mother_phone' => $validated['mother_phone'] ?? null,
+        ]);
+
+        // Keep user model in sync
+        $user->update([
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ]);
 
         return redirect()->route('parent.profile.show')->with('success', 'Profile updated successfully.');
     }
@@ -73,7 +102,15 @@ class ParentProfileController extends Controller
     public function updatePhoto(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
         $request->validate([
             'photo' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],

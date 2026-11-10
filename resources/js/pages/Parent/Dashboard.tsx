@@ -225,8 +225,19 @@ export default function Dashboard({ parent, children, recentNotices, unreadMessa
                                 </div>
                                 <div className="p-3.5 sm:p-6">
                                     <div className="space-y-3.5 sm:space-y-4">
-                                        {children.map((child) => (
-                                            <div key={child.id} className="border border-gray-100 rounded-xl shadow-xs bg-gray-50/40 p-3 sm:p-4">
+                                        {children.length === 0 ? (
+                                            <div className="text-center py-10 px-4">
+                                                <div className="w-16 h-16 mx-auto mb-4 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                                                    <Users className="w-8 h-8" />
+                                                </div>
+                                                <h3 className="text-base font-bold text-slate-800">No Student Linked Yet</h3>
+                                                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                                                    Welcome to Porua Family Portal! There are currently no students linked to your parent account. Please contact your school administration with your phone number ({parent.phone || 'registered number'}) to link your child's profile.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            children.map((child) => (
+                                                <div key={child.id} className="border border-gray-100 rounded-xl shadow-xs bg-gray-50/40 p-3 sm:p-4">
                                                 <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
                                                     <div className="flex items-center gap-3 w-full sm:w-auto">
                                                         <img
@@ -296,7 +307,8 @@ export default function Dashboard({ parent, children, recentNotices, unreadMessa
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             </div>

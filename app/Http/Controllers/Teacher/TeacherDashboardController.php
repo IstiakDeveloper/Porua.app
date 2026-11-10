@@ -47,7 +47,7 @@ class TeacherDashboardController extends Controller
 
         // Get invigilation duties
         $invigilationDuties = ExamInvigilator::where('teacher_id', $teacher->id)
-            ->whereHas('examSchedule.exam', function ($query) {
+            ->whereHas('examSchedule', function ($query) {
                 $query->where('exam_date', '>=', Carbon::today());
             })
             ->with(['examSchedule.exam', 'examHall'])

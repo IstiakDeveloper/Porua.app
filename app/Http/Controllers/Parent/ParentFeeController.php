@@ -14,21 +14,44 @@ class ParentFeeController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
         $studentId = $request->input('student_id');
 
+        $children = Student::where('parent_id', $parent->id)
+            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
+            ->with(['schoolClass', 'section'])
+            ->get();
+
         if (!$studentId) {
-            $student = Student::where('parent_id', $parent->id)->first();
-            if (!$student) {
-                abort(404, 'No children found.');
-            }
-            $studentId = $student->id;
+            $student = $children->first();
+            $studentId = $student?->id;
         } else {
-            $student = Student::where('parent_id', $parent->id)->findOrFail($studentId);
+            $student = $children->firstWhere('id', (int) $studentId);
         }
 
-        $children = Student::where('parent_id', $parent->id)->get();
+        if (!$student) {
+            return Inertia::render('Parent/Fees/Index', [
+                'student' => null,
+                'children' => [],
+                'feeCollections' => [],
+                'summary' => [
+                    'total_amount' => 0,
+                    'total_paid' => 0,
+                    'total_due' => 0,
+                    'overdue_amount' => 0,
+                    'overdue_count' => 0,
+                ],
+            ]);
+        }
 
         // Get fee collections (hide cancelled and duplicate unpaid rows)
         $feeCollections = FeeCollection::where('student_id', $studentId)
@@ -41,10 +64,10 @@ class ParentFeeController extends Controller
 
         // Calculate summary
         $summary = [
-            'total_amount' => $feeCollections->sum('total_amount'),
-            'total_paid' => $feeCollections->sum('paid_amount'),
-            'total_due' => $outstanding->sum(fn ($fee) => $fee->remaining),
-            'overdue_amount' => $outstanding->where('status', 'overdue')->sum(fn ($fee) => $fee->remaining),
+            'total_amount' => (float) $feeCollections->sum('total_amount'),
+            'total_paid' => (float) $feeCollections->sum('paid_amount'),
+            'total_due' => (float) $outstanding->sum(fn ($fee) => $fee->remaining),
+            'overdue_amount' => (float) $outstanding->where('status', 'overdue')->sum(fn ($fee) => $fee->remaining),
             'overdue_count' => $outstanding->where('status', 'overdue')->count(),
         ];
 
@@ -53,7 +76,7 @@ class ParentFeeController extends Controller
                 'id' => $student->id,
                 'full_name' => $student->full_name,
                 'roll_number' => $student->roll_number,
-                'class_name' => $student->class->name ?? 'N/A',
+                'class_name' => $student->schoolClass->name ?? 'N/A',
                 'section_name' => $student->section->name ?? 'N/A',
             ],
             'children' => $children->map(fn($c) => [
@@ -64,11 +87,11 @@ class ParentFeeController extends Controller
                 return [
                     'id' => $fee->id,
                     'fee_type' => $fee->feeType->name ?? 'N/A',
-                    'amount' => $fee->total_amount,
-                    'paid_amount' => $fee->paid_amount,
-                    'remaining' => $fee->remaining,
-                    'due_date' => $fee->due_date,
-                    'payment_date' => $fee->payment_date,
+                    'amount' => (float) $fee->total_amount,
+                    'paid_amount' => (float) $fee->paid_amount,
+                    'remaining' => (float) $fee->remaining,
+                    'due_date' => $fee->due_date ? (is_string($fee->due_date) ? $fee->due_date : $fee->due_date->format('Y-m-d')) : null,
+                    'payment_date' => $fee->payment_date ? (is_string($fee->payment_date) ? $fee->payment_date : $fee->payment_date->format('Y-m-d')) : null,
                     'status' => $fee->status,
                     'is_overdue' => $fee->is_overdue,
                     'payment_method' => $fee->payment_method,
@@ -84,13 +107,24 @@ class ParentFeeController extends Controller
     public function show(Request $request, $id)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
-        $feeCollection = FeeCollection::with(['feeType', 'student', 'collector'])
+        $feeCollection = FeeCollection::with(['feeType', 'student.parents', 'collector'])
             ->findOrFail($id);
 
         // Verify parent has access
-        if ($feeCollection->student->parent_id !== $parent->id) {
+        $isParentChild = ($feeCollection->student->parent_id === $parent->id)
+            || $feeCollection->student->parents->contains('id', $parent->id);
+
+        if (!$isParentChild) {
             abort(403, 'Unauthorized access.');
         }
 
@@ -99,9 +133,9 @@ class ParentFeeController extends Controller
                 'id' => $feeCollection->id,
                 'fee_type' => $feeCollection->feeType->name ?? 'N/A',
                 'student_name' => $feeCollection->student->full_name ?? 'N/A',
-                'amount' => $feeCollection->total_amount,
-                'paid_amount' => $feeCollection->paid_amount,
-                'remaining' => $feeCollection->remaining,
+                'amount' => (float) $feeCollection->total_amount,
+                'paid_amount' => (float) $feeCollection->paid_amount,
+                'remaining' => (float) $feeCollection->remaining,
                 'due_date' => $feeCollection->due_date,
                 'payment_date' => $feeCollection->payment_date,
                 'status' => $feeCollection->status,

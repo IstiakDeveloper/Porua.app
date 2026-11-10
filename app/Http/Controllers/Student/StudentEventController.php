@@ -62,37 +62,6 @@ class StudentEventController extends Controller
 
     public function calendar(Request $request)
     {
-        $user = Auth::user();
-        $student = Student::where('user_id', $user->id)->firstOrFail();
-
-        $year = $request->input('year', Carbon::now()->year);
-        $month = $request->input('month', Carbon::now()->month);
-
-        // Get all events for the calendar view
-        $events = Event::whereYear('start_date', $year)
-            ->whereMonth('start_date', $month)
-            ->orderBy('start_date', 'asc')
-            ->get()
-            ->map(function($event) {
-                return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'date' => $event->start_date?->format('Y-m-d'),
-                    'type' => $event->type,
-                    'start_time' => $event->start_time?->format('H:i'),
-                    'end_time' => $event->end_time?->format('H:i'),
-                    'location' => $event->location,
-                ];
-            });
-
-        return Inertia::render('Student/Events/Calendar', [
-            'student' => [
-                'id' => $student->id,
-                'full_name' => $student->full_name,
-            ],
-            'events' => $events,
-            'currentMonth' => (int)$month,
-            'currentYear' => (int)$year,
-        ]);
+        return redirect()->route('student.events.index');
     }
 }

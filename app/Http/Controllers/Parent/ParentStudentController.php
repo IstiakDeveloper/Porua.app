@@ -13,10 +13,19 @@ class ParentStudentController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
         $children = Student::where('parent_id', $parent->id)
-            ->with(['class', 'section'])
+            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
+            ->with(['schoolClass', 'section'])
             ->get();
 
         return Inertia::render('Parent/Children/Index', [
@@ -29,7 +38,7 @@ class ParentStudentController extends Controller
                     'photo' => $child->photo,
                     'date_of_birth' => $child->date_of_birth,
                     'gender' => $child->gender,
-                    'class_name' => $child->class->name ?? 'N/A',
+                    'class_name' => $child->schoolClass->name ?? 'N/A',
                     'section_name' => $child->section->name ?? 'N/A',
                     'phone' => $child->phone,
                     'email' => $child->email,
@@ -41,15 +50,26 @@ class ParentStudentController extends Controller
     public function show(Request $request, $id)
     {
         $user = $request->user();
-        $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
+        $parent = StudentParent::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'father_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'status' => 'active',
+            ]
+        );
 
-        $student = Student::where('parent_id', $parent->id)
-            ->with(['class', 'section'])
-            ->findOrFail($id);
+        $student = Student::where(function ($q) use ($parent) {
+            $q->where('parent_id', $parent->id)
+              ->orWhereHas('parents', fn($sq) => $sq->where('student_parents.id', $parent->id));
+        })
+        ->with(['schoolClass', 'section'])
+        ->findOrFail($id);
 
         // Get attendance summary
         $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
-            ->whereYear('attendance_date', now()->year)
+            ->whereYear('date', now()->year)
             ->get();
 
         $attendanceStats = [
@@ -70,8 +90,8 @@ class ParentStudentController extends Controller
         // Get fee summary
         $outstanding = \App\Models\FeeCollection::where('student_id', $student->id)->outstanding()->get();
         $feeStats = [
-            'total_paid' => \App\Models\FeeCollection::where('student_id', $student->id)->where('status', 'paid')->sum('paid_amount'),
-            'total_due' => $outstanding->sum(fn ($fee) => $fee->remaining),
+            'total_paid' => (float) \App\Models\FeeCollection::where('student_id', $student->id)->where('status', 'paid')->sum('paid_amount'),
+            'total_due' => (float) $outstanding->sum(fn ($fee) => $fee->remaining),
             'overdue_count' => $outstanding->where('status', 'overdue')->count(),
         ];
 
@@ -87,7 +107,7 @@ class ParentStudentController extends Controller
                 'phone' => $student->phone,
                 'email' => $student->email,
                 'address' => $student->address,
-                'class_name' => $student->class->name ?? 'N/A',
+                'class_name' => $student->schoolClass->name ?? 'N/A',
                 'section_name' => $student->section->name ?? 'N/A',
                 'blood_group' => $student->blood_group,
                 'medical_conditions' => $student->medical_conditions,

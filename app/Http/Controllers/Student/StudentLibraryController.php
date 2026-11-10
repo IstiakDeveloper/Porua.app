@@ -76,82 +76,11 @@ class StudentLibraryController extends Controller
 
     public function books(Request $request)
     {
-        // Search available books in library
-        $search = $request->input('search');
-
-        $books = Book::where('status', 'available')
-            ->when($search, function($query, $search) {
-                $query->where('title', 'like', "%{$search}%")
-                    ->orWhere('author', 'like', "%{$search}%")
-                    ->orWhere('isbn', 'like', "%{$search}%");
-            })
-            ->orderBy('title', 'asc')
-            ->paginate(20)->withQueryString()
-            ->through(function($book) {
-                return [
-                    'id' => $book->id,
-                    'title' => $book->title,
-                    'author' => $book->author,
-                    'isbn' => $book->isbn,
-                    'publisher' => $book->publisher,
-                    'category' => $book->category,
-                    'total_copies' => $book->total_copies,
-                    'available_copies' => $book->available_copies,
-                    'shelf_location' => $book->shelf_location,
-                ];
-            });
-
-        $user = Auth::user();
-        $student = Student::where('user_id', $user->id)->firstOrFail();
-
-        return Inertia::render('Student/Library/Books', [
-            'student' => [
-                'id' => $student->id,
-                'full_name' => $student->full_name,
-            ],
-            'books' => $books,
-            'filters' => [
-                'search' => $search,
-            ],
-        ]);
+        return redirect()->route('student.library.index');
     }
 
     public function issued()
     {
-        $user = Auth::user();
-        $student = Student::where('user_id', $user->id)->firstOrFail();
-
-        // Get all issued books (current + history)
-        $allIssued = BookIssue::with('book')
-            ->where('issueable_type', Student::class)
-            ->where('issueable_id', $student->id)
-            ->orderBy('issue_date', 'desc')
-            ->get()
-            ->map(function($issue) {
-                $isReturned = $issue->status === 'returned';
-                $isOverdue = !$isReturned && Carbon::parse($issue->due_date)->isPast();
-
-                return [
-                    'id' => $issue->id,
-                    'book_title' => $issue->book->title ?? 'N/A',
-                    'book_author' => $issue->book->author ?? 'N/A',
-                    'book_isbn' => $issue->book->isbn ?? 'N/A',
-                    'issue_date' => $issue->issue_date?->format('d M Y'),
-                    'due_date' => $issue->due_date?->format('d M Y'),
-                    'returned_at' => $issue->return_date?->format('d M Y'),
-                    'is_returned' => $isReturned,
-                    'is_overdue' => $isOverdue,
-                    'fine_amount' => $issue->fine_amount,
-                    'fine_paid' => $issue->fine_paid,
-                ];
-            });
-
-        return Inertia::render('Student/Library/Issued', [
-            'student' => [
-                'id' => $student->id,
-                'full_name' => $student->full_name,
-            ],
-            'books' => $allIssued,
-        ]);
+        return redirect()->route('student.library.index');
     }
 }
