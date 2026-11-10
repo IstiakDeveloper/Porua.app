@@ -82,6 +82,11 @@ class Teacher extends Model
         return $this->hasMany(TeacherAttendance::class);
     }
 
+    public function leaveApplications()
+    {
+        return $this->hasMany(LeaveApplication::class);
+    }
+
     public function salaries()
     {
         return $this->morphMany(Salary::class, 'salaryable');

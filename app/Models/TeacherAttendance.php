@@ -18,6 +18,7 @@ class TeacherAttendance extends Model
         'in_time',
         'out_time',
         'reason',
+        'leave_application_id',
         'marked_by',
         // ZKTeco integration fields
         'employee_id',
@@ -46,6 +47,11 @@ class TeacherAttendance extends Model
     public function marker()
     {
         return $this->belongsTo(User::class, 'marked_by');
+    }
+
+    public function leaveApplication()
+    {
+        return $this->belongsTo(LeaveApplication::class, 'leave_application_id');
     }
 
     public function scopePresent($query)

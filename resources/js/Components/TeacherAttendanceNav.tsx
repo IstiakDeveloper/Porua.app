@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
-import { Calendar, ClipboardCheck, ClipboardList, FileText, GraduationCap, Plus, Settings, Users } from 'lucide-react';
+import { Calendar, ClipboardCheck, ClipboardList, FileText, GraduationCap, Plus, Settings, Users, CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type TeacherAttendancePage = 'daily' | 'monthly' | 'report' | 'sheet' | 'create';
@@ -98,6 +98,13 @@ export default function TeacherAttendanceNav({ current, date, extra, reportType 
                     );
                 })}
             </div>
+            <Link
+                href="/leave-applications"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            >
+                <CalendarClock className="h-3.5 w-3.5 text-slate-400" />
+                Leaves
+            </Link>
             <Link
                 href="/device-settings"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors"

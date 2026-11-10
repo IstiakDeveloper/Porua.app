@@ -22,30 +22,40 @@ interface PrintSalaryPaymentsProps {
     payments: Payment[];
     filters?: {
         search?: string;
-        month?: number;
-        year?: number;
+        month?: number | string;
+        year?: number | string;
+        per_page?: number | string;
     };
 }
 
+const MONTH_LOOKUP = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 const PrintSalaryPayments = React.forwardRef<HTMLDivElement, PrintSalaryPaymentsProps>(
-    ({ payments, filters }, ref) => {
-        const getMonthName = (month: number) => {
-            return new Date(2000, month - 1).toLocaleString('default', { month: 'long' });
+    ({ payments = [], filters }, ref) => {
+        const getMonthName = (month?: number | string | null): string => {
+            if (!month) return '';
+            const m = Number(month);
+            if (isNaN(m) || m < 1 || m > 12) return '';
+            return MONTH_LOOKUP[m - 1] || '';
         };
 
-        const formatDate = (dateString: string) => {
-            return new Date(dateString).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
+        const formatDate = (dateString?: string | null) => {
+            if (!dateString) return '-';
+            try {
+                return new Date(dateString).toLocaleDateString('en-GB');
+            } catch {
+                return String(dateString);
+            }
         };
 
-        const totalBaseSalary = payments.reduce((sum, p) => sum + parseFloat(p.base_salary.toString()), 0);
-        const totalPF = payments.reduce((sum, p) => sum + parseFloat(p.provident_fund_deduction.toString()), 0);
-        const totalEmployerPF = payments.reduce((sum, p) => sum + parseFloat(p.employer_pf_contribution.toString()), 0);
-        const totalNetSalary = payments.reduce((sum, p) => sum + parseFloat(p.net_salary.toString()), 0);
-        const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.total_amount.toString()), 0);
+        const totalBaseSalary = payments.reduce((sum, p) => sum + (parseFloat(p?.base_salary?.toString() || '0') || 0), 0);
+        const totalPF = payments.reduce((sum, p) => sum + (parseFloat(p?.provident_fund_deduction?.toString() || '0') || 0), 0);
+        const totalEmployerPF = payments.reduce((sum, p) => sum + (parseFloat(p?.employer_pf_contribution?.toString() || '0') || 0), 0);
+        const totalNetSalary = payments.reduce((sum, p) => sum + (parseFloat(p?.net_salary?.toString() || '0') || 0), 0);
+        const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p?.total_amount?.toString() || '0') || 0), 0);
 
         return (
             <div ref={ref} style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt', color: '#000' }}>
@@ -130,35 +140,35 @@ const PrintSalaryPayments = React.forwardRef<HTMLDivElement, PrintSalaryPayments
                     </thead>
                     <tbody>
                         {payments.map((payment, index) => (
-                            <tr key={payment.id}>
+                            <tr key={payment?.id ?? index}>
                                 <td className="text-center">{index + 1}</td>
                                 <td>
-                                    {payment.staff.user.name} <span style={{ fontSize: '8pt', color: '#666' }}>({payment.staff.employee_id})</span>
+                                    {payment?.staff?.user?.name || 'Unknown'} <span style={{ fontSize: '8pt', color: '#666' }}>({payment?.staff?.employee_id || ''})</span>
                                 </td>
                                 <td className="text-center">
-                                    {getMonthName(payment.month).substring(0, 3)} {payment.year}
+                                    {getMonthName(payment?.month).substring(0, 3)} {payment?.year}
                                 </td>
                                 <td className="text-right">
-                                    ৳{formatAmount(parseFloat(payment.base_salary.toString()))}
+                                    ৳{formatAmount(parseFloat(payment?.base_salary?.toString() || '0') || 0)}
                                 </td>
                                 <td className="text-right">
-                                    ৳{formatAmount(parseFloat(payment.provident_fund_deduction.toString()))}
+                                    ৳{formatAmount(parseFloat(payment?.provident_fund_deduction?.toString() || '0') || 0)}
                                 </td>
                                 <td className="text-right" style={{ fontWeight: '500' }}>
-                                    ৳{formatAmount(parseFloat(payment.net_salary.toString()))}
+                                    ৳{formatAmount(parseFloat(payment?.net_salary?.toString() || '0') || 0)}
                                 </td>
                                 <td className="text-right">
-                                    ৳{formatAmount(parseFloat(payment.employer_pf_contribution.toString()))}
+                                    ৳{formatAmount(parseFloat(payment?.employer_pf_contribution?.toString() || '0') || 0)}
                                 </td>
                                 <td className="text-right" style={{ fontWeight: 'bold' }}>
-                                    ৳{formatAmount(parseFloat(payment.total_amount.toString()))}
+                                    ৳{formatAmount(parseFloat(payment?.total_amount?.toString() || '0') || 0)}
                                 </td>
                                 <td className="text-center" style={{ fontSize: '8pt' }}>
-                                    {new Date(payment.payment_date).toLocaleDateString('en-GB')}
+                                    {formatDate(payment?.payment_date)}
                                 </td>
                                 <td className="text-center" style={{ fontSize: '8pt' }}>
-                                    {payment.payment_method === 'bank_transfer' ? 'Bank' :
-                                     payment.payment_method === 'cash' ? 'Cash' : 'Cheque'}
+                                    {payment?.payment_method === 'bank_transfer' ? 'Bank' :
+                                        payment?.payment_method === 'cash' ? 'Cash' : 'Cheque'}
                                 </td>
                             </tr>
                         ))}

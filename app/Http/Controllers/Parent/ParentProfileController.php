@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Parent;
 use App\Http\Controllers\Controller;
 use App\Models\StudentParent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -54,14 +55,14 @@ class ParentProfileController extends Controller
         $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
 
         $validated = $request->validate([
-            'phone' => 'required|string|max:20',
-            'email' => 'required|email|max:255',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
-            'father_phone' => 'nullable|string|max:20',
-            'mother_phone' => 'nullable|string|max:20',
+            'phone' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email', 'max:255'],
+            'address' => ['nullable', 'string'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'father_phone' => ['nullable', 'string', 'max:20'],
+            'mother_phone' => ['nullable', 'string', 'max:20'],
         ]);
 
         $parent->update($validated);
@@ -75,7 +76,7 @@ class ParentProfileController extends Controller
         $parent = StudentParent::where('user_id', $user->id)->firstOrFail();
 
         $request->validate([
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'photo' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
         // Delete old photo if exists
@@ -106,6 +107,10 @@ class ParentProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return redirect()->route('parent.profile.show')->with('success', 'Password updated successfully.');
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->with('success', 'Password updated successfully. You have been logged out from all devices. Please log in with your new password.');
     }
 }

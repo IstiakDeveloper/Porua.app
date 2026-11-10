@@ -27,22 +27,63 @@ class SalaryPaymentController extends Controller
      */
     public function index(Request $request)
     {
-        $payments = SalaryPayment::with(['staff.user', 'account', 'creator'])
+        $perPageParam = $request->input('per_page', '50');
+        $perPage = ($perPageParam === 'all' || (int) $perPageParam > 500) ? 1000 : max(10, min(100, (int) $perPageParam));
+
+        $query = SalaryPayment::with(['staff.user', 'account', 'creator'])
             ->when($request->search, function ($query, $search) {
                 $query->whereHas('staff', function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('employee_id', 'like', "%{$search}%");
+                        ->orWhere('employee_id', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
             ->when($request->month, function ($query, $month) {
-                $query->where('month', $month);
+                $query->where('month', (int) $month);
             })
             ->when($request->year, function ($query, $year) {
-                $query->where('year', $year);
-            })
-            ->latest('payment_date')
-            ->paginate(15)
+                $query->where('year', (int) $year);
+            });
+
+        // Compute accurate summary stats across entire query (not just current page)
+        $statsQuery = clone $query;
+        $summary = [
+            'total_count' => (int) $statsQuery->count(),
+            'total_base_salary' => (float) $statsQuery->sum('base_salary'),
+            'total_employee_pf' => (float) $statsQuery->sum('provident_fund_deduction'),
+            'total_employer_pf' => (float) $statsQuery->sum('employer_pf_contribution'),
+            'total_net_salary' => (float) $statsQuery->sum('net_salary'),
+            'total_paid' => (float) $statsQuery->sum('total_amount'),
+        ];
+
+        // Counts per month for the selected year (or current year) to show month badges/counts
+        $selectedYear = (int) ($request->year ?: date('Y'));
+        $monthCounts = SalaryPayment::selectRaw('month, count(*) as count, sum(total_amount) as total_amount')
+            ->where('year', $selectedYear)
+            ->groupBy('month')
+            ->get()
+            ->keyBy('month')
+            ->map(fn($item) => [
+                'count' => (int) $item->count,
+                'total_amount' => (float) $item->total_amount,
+            ])
+            ->toArray();
+
+        // Available years that actually have payments
+        $availableYears = SalaryPayment::select('year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year')
+            ->toArray();
+        if (empty($availableYears)) {
+            $availableYears = [(int) date('Y')];
+        }
+
+        $payments = $query->latest('payment_date')
+            ->paginate($perPage)
             ->withQueryString();
 
         $teachers = Teacher::where('status', 'active')
@@ -52,7 +93,7 @@ class SalaryPaymentController extends Controller
             ->get()
             ->map(fn($t) => [
                 'id' => $t->id,
-                'name' => $t->user->name,
+                'name' => $t->user?->name ?? "{$t->first_name} {$t->last_name}",
                 'employee_id' => $t->employee_id,
                 'salary' => $t->salary,
                 'designation' => $t->designation,
@@ -65,9 +106,15 @@ class SalaryPaymentController extends Controller
 
         return Inertia::render('Salaries/Payments/Index', [
             'payments' => $payments,
+            'summary' => $summary,
+            'monthCounts' => $monthCounts,
+            'availableYears' => $availableYears,
             'teachers' => $teachers,
             'accounts' => $accounts,
-            'filters' => $request->only(['search', 'month', 'year']),
+            'filters' => array_merge(
+                $request->only(['search', 'month', 'year']),
+                ['per_page' => $perPageParam]
+            ),
         ]);
     }
 
@@ -477,6 +524,108 @@ class SalaryPaymentController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Failed to process bulk payments: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk change month and year for salary payments (e.g. correcting mistaken period)
+     */
+    public function bulkChangeMonth(Request $request)
+    {
+        $validated = $request->validate([
+            'payment_ids' => 'nullable|array',
+            'payment_ids.*' => 'exists:salary_payments,id',
+            'from_month' => 'nullable|integer|min:1|max:12',
+            'from_year' => 'nullable|integer|min:2020|max:2100',
+            'target_month' => 'required|integer|min:1|max:12',
+            'target_year' => 'required|integer|min:2020|max:2100',
+        ]);
+
+        $targetMonth = (int) $validated['target_month'];
+        $targetYear = (int) $validated['target_year'];
+
+        // Determine which payments to update
+        if (!empty($validated['payment_ids'])) {
+            $payments = SalaryPayment::with('staff.user')->whereIn('id', $validated['payment_ids'])->get();
+        } elseif (!empty($validated['from_month']) && !empty($validated['from_year'])) {
+            $payments = SalaryPayment::with('staff.user')
+                ->where('month', $validated['from_month'])
+                ->where('year', $validated['from_year'])
+                ->get();
+        } else {
+            return redirect()->back()->with('error', 'Please select salary payments or specify the source month and year.');
+        }
+
+        if ($payments->isEmpty()) {
+            return redirect()->back()->with('error', 'No salary payments found to update.');
+        }
+
+        // Check for collisions (i.e. teacher already has salary payment in target month/year)
+        $collisions = [];
+        $targetMonthName = date('F', mktime(0, 0, 0, $targetMonth, 1));
+
+        foreach ($payments as $payment) {
+            $exists = SalaryPayment::where('staff_id', $payment->staff_id)
+                ->where('month', $targetMonth)
+                ->where('year', $targetYear)
+                ->where('id', '!=', $payment->id)
+                ->exists();
+
+            if ($exists) {
+                $teacherName = $payment->staff?->user?->name ?? "Staff ID {$payment->staff_id}";
+                $collisions[] = $teacherName;
+            }
+        }
+
+        if (!empty($collisions)) {
+            $sample = implode(', ', array_slice($collisions, 0, 5));
+            if (count($collisions) > 5) {
+                $sample .= ' and ' . (count($collisions) - 5) . ' others';
+            }
+            return redirect()->back()->with('error', "Cannot move to {$targetMonthName} {$targetYear}: Salary payment already exists for: {$sample}.");
+        }
+
+        DB::beginTransaction();
+        try {
+            $updatedCount = 0;
+            foreach ($payments as $payment) {
+                $oldMonthName = date('F', mktime(0, 0, 0, $payment->month, 1));
+                $oldPeriod = "({$oldMonthName} {$payment->year})";
+                $newPeriod = "({$targetMonthName} {$targetYear})";
+
+                $payment->update([
+                    'month' => $targetMonth,
+                    'year' => $targetYear,
+                ]);
+
+                // Update related accounting transaction descriptions
+                $reference = $this->accountingReference($payment);
+                $transactions = Transaction::where('reference_number', $reference)->get();
+                foreach ($transactions as $tx) {
+                    if (str_contains($tx->description, $oldPeriod)) {
+                        $tx->update([
+                            'description' => str_replace($oldPeriod, $newPeriod, $tx->description),
+                        ]);
+                    }
+                }
+
+                $updatedCount++;
+            }
+
+            DB::commit();
+
+            if (function_exists('logActivity')) {
+                logActivity('update', "Bulk changed month for {$updatedCount} salary payments to {$targetMonthName} {$targetYear}", SalaryPayment::class);
+            }
+
+            return redirect()->route('salary-payments.index', [
+                'month' => $targetMonth,
+                'year' => $targetYear,
+                'per_page' => $request->input('per_page', '50'),
+            ])->with('success', "Successfully updated {$updatedCount} salary payments to {$targetMonthName} {$targetYear}!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to update salary payments: ' . $e->getMessage());
         }
     }
 

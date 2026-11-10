@@ -70,7 +70,13 @@ class TeacherDashboardController extends Controller
             'present' => $myAttendance->where('status', 'present')->count(),
             'absent' => $myAttendance->where('status', 'absent')->count(),
             'late' => $myAttendance->where('status', 'late')->count(),
+            'leave' => $myAttendance->where('status', 'leave')->count(),
             'total_days' => $myAttendance->count(),
+        ];
+
+        $leaveStats = [
+            'leaves_this_month' => $myAttendance->where('status', 'leave')->count(),
+            'pending_applications' => \App\Models\LeaveApplication::where('teacher_id', $teacher->id)->where('status', 'pending')->count(),
         ];
 
         return Inertia::render('Teacher/Dashboard', [
@@ -92,6 +98,7 @@ class TeacherDashboardController extends Controller
             'invigilationDuties' => $invigilationDuties,
             'unreadMessages' => $unreadMessages,
             'myAttendance' => $myAttendanceStats,
+            'leaveStats' => $leaveStats,
         ]);
     }
 

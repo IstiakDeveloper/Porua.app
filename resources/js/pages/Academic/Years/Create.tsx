@@ -5,7 +5,18 @@ import Button from '@/Components/Button';
 import Input from '@/Components/Input';
 import { ArrowLeft, Save, Calendar } from 'lucide-react';
 
-export default function Create() {
+interface SourceYear {
+    id: number;
+    name: string;
+    is_current: boolean;
+}
+
+interface CreateProps {
+    sourceYears?: SourceYear[];
+    defaultCopyFromId?: number | null;
+}
+
+export default function Create({ sourceYears = [], defaultCopyFromId = null }: CreateProps) {
     const [data, setData] = useState({
         name: '',
         title: '',
@@ -14,6 +25,8 @@ export default function Create() {
         status: 'upcoming',
         is_current: false,
         description: '',
+        copy_fee_structures: true,
+        copy_from_academic_year_id: defaultCopyFromId ? String(defaultCopyFromId) : '',
     });
     const [errors, setErrors] = useState<any>({});
     const [processing, setProcessing] = useState(false);
@@ -22,7 +35,13 @@ export default function Create() {
         e.preventDefault();
         setProcessing(true);
 
-        router.post('/academic-years', data, {
+        router.post('/academic-years', {
+            ...data,
+            copy_fee_structures: data.copy_fee_structures,
+            copy_from_academic_year_id: data.copy_fee_structures && data.copy_from_academic_year_id
+                ? data.copy_from_academic_year_id
+                : null,
+        }, {
             onError: (errors) => {
                 setErrors(errors);
                 setProcessing(false);
@@ -62,14 +81,14 @@ export default function Create() {
                                 onChange={(e) => setData({ ...data, name: e.target.value })}
                                 error={errors.name}
                                 required
-                                placeholder="2024-2025"
+                                placeholder="2027"
                             />
                             <Input
                                 label="Title (Optional)"
                                 value={data.title}
                                 onChange={(e) => setData({ ...data, title: e.target.value })}
                                 error={errors.title}
-                                placeholder="Academic Year 2024-2025"
+                                placeholder="Academic Year 2027"
                             />
                         </div>
 
@@ -117,6 +136,47 @@ export default function Create() {
                                     <span className="text-sm font-medium text-gray-700">Set as current academic year</span>
                                 </label>
                             </div>
+                        </div>
+
+                        <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4 space-y-3">
+                            <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={data.copy_fee_structures}
+                                    onChange={(e) => setData({ ...data, copy_fee_structures: e.target.checked })}
+                                    className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                                <span>
+                                    <span className="block text-sm font-medium text-gray-900">
+                                        Copy fee structures from another year
+                                    </span>
+                                    <span className="block text-xs text-gray-600 mt-0.5">
+                                        Admission / Session / Monthly amounts will be copied for every class. You can edit amounts later.
+                                    </span>
+                                </span>
+                            </label>
+
+                            {data.copy_fee_structures && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Copy from</label>
+                                    <select
+                                        value={data.copy_from_academic_year_id}
+                                        onChange={(e) => setData({ ...data, copy_from_academic_year_id: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                        required={data.copy_fee_structures}
+                                    >
+                                        <option value="">Select year</option>
+                                        {sourceYears.map((year) => (
+                                            <option key={year.id} value={year.id}>
+                                                {year.name}{year.is_current ? ' (Current)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.copy_from_academic_year_id && (
+                                        <p className="text-red-600 text-sm mt-1">{errors.copy_from_academic_year_id}</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div>

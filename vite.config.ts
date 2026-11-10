@@ -17,6 +17,18 @@ export default defineConfig({
             formVariants: true,
         }),
     ],
+    server: {
+        // Use IPv4 explicitly — host:true writes http://[::]:port into public/hot
+        // which browsers fail to load (ERR_FAILED + broken service-worker fetches).
+        host: '127.0.0.1',
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            host: '127.0.0.1',
+            port: 5173,
+        },
+        cors: true,
+    },
     esbuild: {
         jsx: 'automatic',
     },

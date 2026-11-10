@@ -162,6 +162,10 @@ class StudentProfileController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        return back()->with('success', 'Password changed successfully!');
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->with('success', 'Password changed successfully. You have been logged out from all devices. Please log in with your new password.');
     }
 }

@@ -112,13 +112,22 @@ class AutoGenerateMonthlyFees
     {
         $today = Carbon::today();
 
-        // Get all pending fees
+        // Get all pending fees (only for active, non-soft-deleted students)
         $pendingFees = FeeCollection::with(['feeType', 'student.schoolClass'])
+            ->whereHas('student')
             ->where('status', 'pending')
             ->get();
 
         foreach ($pendingFees as $fee) {
             try {
+                if (! $fee->student || ! $fee->student->class_id) {
+                    continue;
+                }
+
+                if (! $fee->month || ! $fee->year) {
+                    continue;
+                }
+
                 if (FeeCollection::paidExistsForPeriod(
                     (int) $fee->student_id,
                     (int) $fee->fee_type_id,

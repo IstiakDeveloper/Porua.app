@@ -48,7 +48,7 @@ class StudentController extends Controller
     {
         $this->authorize('create_students');
 
-        // Get classes with ALL their fee structures (not just monthly)
+        // Get classes with fee structures tagged by academic year
         $classes = SchoolClass::where('status', 'active')
             ->with(['feeStructures.feeType'])
             ->get()
@@ -60,6 +60,7 @@ class StudentController extends Controller
                         return [
                             'id' => $fee->id,
                             'fee_type_id' => $fee->fee_type_id,
+                            'academic_year_id' => $fee->academic_year_id,
                             'fee_type_name' => $fee->feeType->name,
                             'frequency' => $fee->feeType->frequency,
                             'amount' => (float) $fee->amount,
@@ -68,8 +69,12 @@ class StudentController extends Controller
                 ];
             });
 
+        // Include upcoming years so next-session (e.g. 2027) admissions are possible now
         return Inertia::render('Students/Create', [
-            'academicYears' => AcademicYear::where('status', 'active')->get(),
+            'academicYears' => AcademicYear::whereIn('status', ['active', 'upcoming'])
+                ->orderByDesc('is_current')
+                ->orderByDesc('start_date')
+                ->get(),
             'classes' => $classes,
         ]);
     }
@@ -346,10 +351,7 @@ class StudentController extends Controller
     private function autoGenerateStudentFees(Student $student)
     {
         try {
-            $currentMonth = now()->month;
-            $currentYear = now()->year;
-
-            // Only fee structures for Admission & Session fee types (by name)
+            // Only Admission & Session fee types (by name) — never auto-create monthly on admission
             $feeStructures = FeeStructure::with('feeType')
                 ->where('class_id', $student->class_id)
                 ->where('academic_year_id', $student->academic_year_id)
@@ -362,6 +364,10 @@ class StudentController extends Controller
                 })
                 ->get();
 
+            $admissionDate = $student->admission_date
+                ? Carbon::parse($student->admission_date)
+                : now();
+
             foreach ($feeStructures as $feeStructure) {
                 $existingFee = FeeCollection::where('student_id', $student->id)
                     ->where('fee_type_id', $feeStructure->fee_type_id)
@@ -373,16 +379,10 @@ class StudentController extends Controller
                     continue;
                 }
 
-                $dueDate = $feeStructure->due_date ?? Carbon::create($currentYear, $currentMonth, 10);
-                $month = $currentMonth;
-                $year = $currentYear;
-
-                if ($feeStructure->feeType->frequency === 'one_time') {
-                    $admissionDate = Carbon::parse($student->admission_date);
-                    $month = $admissionDate->month;
-                    $year = $admissionDate->year;
-                    $dueDate = $admissionDate;
-                }
+                // One-time / admission fees bill against admission date (payment can be taken now as advance)
+                $month = $admissionDate->month;
+                $year = $admissionDate->year;
+                $dueDate = $admissionDate;
 
                 FeeCollection::createPendingIfAbsent([
                     'receipt_number' => 'FEE-'.date('Ymd').'-'.str_pad(

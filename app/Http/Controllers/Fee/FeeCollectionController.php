@@ -980,9 +980,10 @@ class FeeCollectionController extends Controller
             $nextYear = $currentY;
         }
 
-        // Find class fee structures
+        // Find class fee structures for THIS student's academic year only
         $feeStructures = FeeStructure::with('feeType')
             ->where('class_id', $student->class_id)
+            ->when($student->academic_year_id, fn ($q) => $q->where('academic_year_id', $student->academic_year_id))
             ->get()
             ->map(function ($fs) use ($student) {
                 $isMonthly = ($fs->feeType->frequency ?? '') === 'monthly';
@@ -1083,6 +1084,268 @@ class FeeCollectionController extends Controller
             'recent_receipts' => $recentReceipts,
             'next_month' => $nextMonth,
             'next_year' => $nextYear,
+        ]);
+    }
+
+    /**
+     * Resync unpaid monthly fees and generate missing past months from student admission_date
+     */
+    public function resyncStudentDues(Request $request)
+    {
+        $studentId = $request->input('student_id') ?? $request->query('student_id');
+
+        if (! $studentId) {
+            return response()->json(['error' => 'Student ID is required'], 422);
+        }
+
+        $student = Student::with(['schoolClass', 'academicYear', 'user'])
+            ->where(function ($query) use ($studentId) {
+                if (is_numeric($studentId)) {
+                    $query->where('id', $studentId);
+                }
+                $query->orWhere('admission_number', $studentId)
+                    ->orWhere('student_id', $studentId);
+            })
+            ->first();
+
+        if (! $student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+
+        // Expected monthly fee:
+        // 1. $student->monthly_fee (if explicitly defined on student)
+        // 2. FeeStructure for the student's class
+        $expectedMonthlyFee = $student->monthly_fee !== null && (float) $student->monthly_fee > 0
+            ? (float) $student->monthly_fee
+            : null;
+
+        $academicYearId = $student->academic_year_id;
+        if (! $academicYearId) {
+            $academicYear = \App\Models\AcademicYear::where('is_current', true)->first()
+                ?? \App\Models\AcademicYear::where('status', 'active')->first();
+            $academicYearId = $academicYear?->id;
+        } else {
+            $academicYear = $student->academicYear ?? \App\Models\AcademicYear::find($academicYearId);
+        }
+
+        $classStructure = null;
+        if ($student->class_id) {
+            $classStructure = FeeStructure::where('class_id', $student->class_id)
+                ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+                ->whereHas('feeType', fn ($q) => $q->where('frequency', 'monthly'))
+                ->with('feeType')
+                ->first();
+
+            if ($classStructure && $expectedMonthlyFee === null) {
+                $expectedMonthlyFee = (float) $classStructure->amount;
+            }
+        }
+
+        // Determine monthly fee type
+        $monthlyFeeTypeId = $classStructure?->fee_type_id;
+        if (! $monthlyFeeTypeId) {
+            $monthlyFeeType = \App\Models\FeeType::where('frequency', 'monthly')
+                ->where('status', 'active')
+                ->first()
+                ?? \App\Models\FeeType::where('frequency', 'monthly')->first();
+            $monthlyFeeTypeId = $monthlyFeeType?->id;
+        }
+
+        // Future academic year (e.g. 2027 admission while still in 2026):
+        // do NOT backfill monthly bills — only admission/session one-time fees below.
+        $academicYearNotStarted = $academicYear
+            && $academicYear->start_date
+            && Carbon::parse($academicYear->start_date)->startOfDay()->gt(now()->startOfDay());
+
+        $createdMonths = [];
+        $createdCount = 0;
+
+        if ($academicYearNotStarted) {
+            // Skip monthly generation entirely for not-yet-started sessions.
+        } elseif ($expectedMonthlyFee === null || ! $monthlyFeeTypeId) {
+            // Still allow one-time fees below; monthly skipped if structure missing.
+        } else {
+            // 1. Generate missing monthly fees from max(admission, AY start) up to min(now, AY end)
+            $startDate = $student->admission_date ? Carbon::parse($student->admission_date) : Carbon::parse($student->created_at);
+            if ($academicYear && $academicYear->start_date) {
+                $ayStart = Carbon::parse($academicYear->start_date);
+                if ($startDate->lt($ayStart)) {
+                    $startDate = $ayStart;
+                }
+            }
+
+            $endDate = now();
+            if ($academicYear && $academicYear->end_date) {
+                $ayEnd = Carbon::parse($academicYear->end_date);
+                if ($endDate->gt($ayEnd)) {
+                    $endDate = $ayEnd;
+                }
+            }
+
+            $currentCursor = Carbon::create($startDate->year, $startDate->month, 1);
+            $endCursor = Carbon::create($endDate->year, $endDate->month, 1);
+
+            while ($currentCursor->lte($endCursor)) {
+                $m = (int) $currentCursor->month;
+                $y = (int) $currentCursor->year;
+
+                $exists = FeeCollection::where('student_id', $student->id)
+                    ->where('month', $m)
+                    ->where('year', $y)
+                    ->whereHas('feeType', fn ($q) => $q->where('frequency', 'monthly'))
+                    ->where('status', '!=', 'cancelled')
+                    ->exists();
+
+                if (! $exists) {
+                    $dueDate = Carbon::create($y, $m, 10);
+                    $isOverdue = $dueDate->isPast();
+
+                    $receiptNum = 'FEE-' . date('Ymd') . '-' . str_pad(
+                        FeeCollection::whereDate('created_at', today())->count() + 1 + $createdCount,
+                        6,
+                        '0',
+                        STR_PAD_LEFT
+                    );
+
+                    FeeCollection::createPendingIfAbsent([
+                        'receipt_number' => $receiptNum,
+                        'student_id' => $student->id,
+                        'fee_type_id' => $monthlyFeeTypeId,
+                        'academic_year_id' => $academicYearId,
+                        'month' => $m,
+                        'year' => $y,
+                        'amount' => $expectedMonthlyFee,
+                        'late_fee' => 0,
+                        'discount' => 0,
+                        'total_amount' => $expectedMonthlyFee,
+                        'paid_amount' => 0,
+                        'payment_date' => $dueDate,
+                        'status' => $isOverdue ? 'overdue' : 'pending',
+                        'remarks' => 'Auto-generated on dues resync (Admitted: ' . $startDate->format('M Y') . ')',
+                        'collected_by' => auth()->id() ?? 1,
+                    ]);
+
+                    $createdMonths[] = $currentCursor->format('M Y');
+                    $createdCount++;
+                }
+
+                $currentCursor->addMonth();
+            }
+        }
+
+        // 2. Check for missing One-Time Admission / Session Fees
+        $createdOneTimeCount = 0;
+        if ($student->class_id) {
+            // one_time OR admission/session named fees (often stored as yearly)
+            $oneTimeStructures = FeeStructure::where('class_id', $student->class_id)
+                ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+                ->whereHas('feeType', function ($q) {
+                    $q->where('status', 'active')
+                        ->where(function ($q2) {
+                            $q2->where('frequency', 'one_time')
+                                ->orWhereRaw('LOWER(name) LIKE ?', ['%admission%'])
+                                ->orWhereRaw('LOWER(name) LIKE ?', ['%session%']);
+                        });
+                })
+                ->with('feeType')
+                ->get();
+
+            foreach ($oneTimeStructures as $ots) {
+                $hasRecord = FeeCollection::where('student_id', $student->id)
+                    ->where('fee_type_id', $ots->fee_type_id)
+                    ->where('academic_year_id', $academicYearId)
+                    ->where('status', '!=', 'cancelled')
+                    ->exists();
+
+                if (! $hasRecord && (float) $ots->amount > 0) {
+                    $admissionDate = $student->admission_date ? Carbon::parse($student->admission_date) : now();
+                    $receiptNum = 'FEE-' . date('Ymd') . '-' . str_pad(
+                        FeeCollection::whereDate('created_at', today())->count() + 1 + $createdCount + $createdOneTimeCount,
+                        6,
+                        '0',
+                        STR_PAD_LEFT
+                    );
+
+                    FeeCollection::createPendingIfAbsent([
+                        'receipt_number' => $receiptNum,
+                        'student_id' => $student->id,
+                        'fee_type_id' => $ots->fee_type_id,
+                        'academic_year_id' => $academicYearId,
+                        'month' => $admissionDate->month,
+                        'year' => $admissionDate->year,
+                        'amount' => $ots->amount,
+                        'late_fee' => 0,
+                        'discount' => 0,
+                        'total_amount' => $ots->amount,
+                        'paid_amount' => 0,
+                        'payment_date' => $admissionDate,
+                        'status' => 'pending',
+                        'remarks' => 'Auto-generated on dues resync (' . ($ots->feeType->name ?? 'One-time fee') . ')',
+                        'collected_by' => auth()->id() ?? 1,
+                    ]);
+                    $createdOneTimeCount++;
+                }
+            }
+        }
+
+        // 3. Align unpaid monthly amounts (skip for future academic years / missing monthly structure)
+        $updatedCount = 0;
+        if (! $academicYearNotStarted && $expectedMonthlyFee !== null) {
+            $unpaidFees = FeeCollection::where('student_id', $student->id)
+                ->whereHas('feeType', fn ($q) => $q->where('frequency', 'monthly'))
+                ->whereIn('status', ['pending', 'overdue'])
+                ->where(function ($q) {
+                    $q->whereNull('paid_amount')->orWhere('paid_amount', 0);
+                })
+                ->get();
+
+            foreach ($unpaidFees as $fee) {
+                if ((float) $fee->amount !== (float) $expectedMonthlyFee) {
+                    $fee->amount = $expectedMonthlyFee;
+                    $fee->total_amount = max(0, $expectedMonthlyFee + (float) ($fee->late_fee ?? 0) - (float) ($fee->discount ?? 0));
+                    $fee->save();
+                    $updatedCount++;
+                }
+            }
+        }
+
+        $studentName = trim("{$student->first_name} {$student->last_name}");
+        if (empty($studentName) && $student->user) {
+            $studentName = $student->user->name;
+        }
+
+        if (function_exists('logActivity')) {
+            logActivity('update', "Resynced dues for student {$studentName}: created {$createdCount} missing monthly fees, {$createdOneTimeCount} one-time fees, updated {$updatedCount} fees to ৳{$expectedMonthlyFee}", Student::class, $student->id);
+        }
+
+        $parts = [];
+        if ($academicYearNotStarted) {
+            $parts[] = 'এই শিক্ষাবর্ষ এখনও শুরু হয়নি — মাসিক বিল তৈরি করা হয়নি (শুধু ভর্তি/সেশন ফি)';
+        }
+        if ($createdCount > 0) {
+            $firstMonth = $createdMonths[0];
+            $lastMonth = end($createdMonths);
+            $monthRangeText = $createdCount === 1 ? $firstMonth : "{$firstMonth} - {$lastMonth}";
+            $parts[] = "ভর্তির তারিখ অনুযায়ী {$createdCount}টি অনুপস্থিত মাসিক বিল ({$monthRangeText}) তৈরি করা হয়েছে";
+        }
+        if ($createdOneTimeCount > 0) {
+            $parts[] = "{$createdOneTimeCount}টি বকেয়া এককালীন ফি যুক্ত করা হয়েছে";
+        }
+        if ($updatedCount > 0) {
+            $parts[] = "{$updatedCount}টি বকেয়া ফির পরিমাণ (৳{$expectedMonthlyFee}) সংশোধন করা হয়েছে";
+        }
+
+        $message = ! empty($parts)
+            ? implode(' এবং ', $parts) . '।'
+            : "সব বকেয়া মাসিক ফি ইতিমধ্যে সঠিক আছে (৳{$expectedMonthlyFee})। কোনো অনুপস্থিত মাস পাওয়া যায়নি।";
+
+        return response()->json([
+            'success' => true,
+            'created_count' => $createdCount,
+            'updated_count' => $updatedCount,
+            'created_one_time_count' => $createdOneTimeCount,
+            'expected_amount' => $expectedMonthlyFee,
+            'message' => $message,
         ]);
     }
 

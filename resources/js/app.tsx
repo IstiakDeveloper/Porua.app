@@ -5,6 +5,14 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import GlobalLoadingIndicator from './Components/GlobalLoadingIndicator';
 
+// Stale service workers (often from production/PWA) intercept Vite HMR and throw
+// "Failed to convert value to 'Response'" — clear them in local development.
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+    });
+}
+
 // Prevent mouse wheel from changing number input values while focused
 document.addEventListener(
     'wheel',

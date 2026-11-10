@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -36,6 +39,43 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (User $user) {
+            if ($user->isDirty('password')) {
+                // Invalidate remember_token so "Remember Me" cookies cannot auto-login
+                $user->setRememberToken(Str::random(60));
+            }
+        });
+
+        static::updated(function (User $user) {
+            if ($user->wasChanged('password')) {
+                // Terminate all active database sessions for this user across all devices
+                try {
+                    DB::table('sessions')->where('user_id', $user->id)->delete();
+                } catch (\Throwable $e) {
+                    Log::warning("Failed to clear sessions for user {$user->id}: " . $e->getMessage());
+                }
+            }
+        });
+    }
+
+    /**
+     * Terminate all active sessions and invalidate remember tokens for this user.
+     */
+    public function logoutAllDevices(): void
+    {
+        try {
+            DB::table('sessions')->where('user_id', $this->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning("Failed to clear sessions for user {$this->id}: " . $e->getMessage());
+        }
+
+        $this->forceFill([
+            'remember_token' => Str::random(60),
+        ])->saveQuietly();
     }
 
     // Relationships

@@ -63,8 +63,10 @@ class DashboardController extends Controller
 
         $feeRecords = $feesQuery->get(['id', 'month', 'year', 'amount', 'late_fee', 'discount', 'paid_amount', 'payment_date']);
 
-        $totalBilled = 0.0;
+        $totalGross = 0.0;
+        $totalDiscount = 0.0;
         $totalPaid = 0.0;
+        $totalDue = 0.0;
         $todayCollection = 0.0;
         $thisMonthCollection = 0.0;
         $now = now();
@@ -79,6 +81,8 @@ class DashboardController extends Controller
             $monthlyTrends[$m] = [
                 'month' => $m,
                 'name' => $monthNames[$m],
+                'gross' => 0.0,
+                'discount' => 0.0,
                 'billed' => 0.0,
                 'paid' => 0.0,
                 'due' => 0.0,
@@ -86,14 +90,20 @@ class DashboardController extends Controller
         }
 
         foreach ($feeRecords as $fee) {
-            $amount = (float) $fee->amount + (float) $fee->late_fee - (float) $fee->discount;
+            $gross = (float) $fee->amount + (float) $fee->late_fee;
+            $discount = (float) $fee->discount;
+            $net = max($gross - $discount, 0);
             $paid = (float) $fee->paid_amount;
-            $totalBilled += $amount;
+
+            $totalGross += $gross;
+            $totalDiscount += $discount;
             $totalPaid += $paid;
 
             $m = $fee->month ? (int) $fee->month : ($fee->payment_date ? (int) $fee->payment_date->month : null);
             if ($m && isset($monthlyTrends[$m])) {
-                $monthlyTrends[$m]['billed'] += $amount;
+                $monthlyTrends[$m]['gross'] += $gross;
+                $monthlyTrends[$m]['discount'] += $discount;
+                $monthlyTrends[$m]['billed'] += $net;
                 $monthlyTrends[$m]['paid'] += $paid;
             }
 
@@ -108,12 +118,22 @@ class DashboardController extends Controller
         }
 
         foreach ($monthlyTrends as &$mt) {
+            $mt['gross'] = round($mt['gross']);
+            $mt['discount'] = round($mt['discount']);
+            $mt['billed'] = max($mt['gross'] - $mt['discount'], 0);
+            $mt['paid'] = round($mt['paid']);
             $mt['due'] = max($mt['billed'] - $mt['paid'], 0);
         }
         unset($mt);
 
-        $totalDue = max($totalBilled - $totalPaid, 0);
-        $collectionRate = $totalBilled > 0 ? round(($totalPaid / $totalBilled) * 100, 1) : 0;
+        $totalGross = round($totalGross);
+        $totalDiscount = round($totalDiscount);
+        $totalNet = max($totalGross - $totalDiscount, 0);
+        $totalPaid = round($totalPaid);
+        $totalDue = max($totalNet - $totalPaid, 0);
+        $collectionRate = $totalNet > 0 ? round(($totalPaid / $totalNet) * 100, 1) : 0;
+        $discountRate = $totalGross > 0 ? round(($totalDiscount / $totalGross) * 100, 1) : 0;
+        $dueRate = $totalNet > 0 ? round(($totalDue / $totalNet) * 100, 1) : 0;
 
         // 4. Attendance Statistics (Smart Fallback if Today is not recorded yet)
         $todayStr = now()->toDateString();
@@ -194,20 +214,28 @@ class DashboardController extends Controller
                     })
                     ->get(['amount', 'late_fee', 'discount', 'paid_amount']);
 
-                $billed = 0.0;
+                $gross = 0.0;
+                $discount = 0.0;
                 $paid = 0.0;
                 foreach ($fees as $f) {
-                    $billed += (float) $f->amount + (float) $f->late_fee - (float) $f->discount;
+                    $gross += (float) $f->amount + (float) $f->late_fee;
+                    $discount += (float) $f->discount;
                     $paid += (float) $f->paid_amount;
                 }
-                $due = max($billed - $paid, 0);
-                $rate = $billed > 0 ? round(($paid / $billed) * 100, 1) : 0;
+                $gross = round($gross);
+                $discount = round($discount);
+                $net = max($gross - $discount, 0);
+                $paid = round($paid);
+                $due = max($net - $paid, 0);
+                $rate = $net > 0 ? round(($paid / $net) * 100, 1) : 0;
 
                 return [
                     'id' => $cls->id,
                     'name' => $cls->name,
                     'student_count' => $cls->students_count,
-                    'billed' => $billed,
+                    'billed' => $gross,
+                    'discount' => $discount,
+                    'net' => $net,
                     'paid' => $paid,
                     'due' => $due,
                     'collection_rate' => $rate,
@@ -261,10 +289,16 @@ class DashboardController extends Controller
                 'total_students' => $totalStudents,
                 'total_teachers' => $totalTeachers,
                 'total_classes' => $totalClasses,
-                'total_billed' => $totalBilled,
+                'total_receivable' => $totalGross,
+                'total_billed' => $totalGross,
+                'total_gross' => $totalGross,
+                'total_discount' => $totalDiscount,
+                'total_net' => $totalNet,
                 'total_collected' => $totalPaid,
                 'total_due' => $totalDue,
                 'collection_rate' => $collectionRate,
+                'discount_rate' => $discountRate,
+                'due_rate' => $dueRate,
                 'today_collection' => $todayCollection,
                 'this_month_collection' => $thisMonthCollection,
                 'liquid_balance' => $liquidBalance,

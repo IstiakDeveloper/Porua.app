@@ -72,6 +72,10 @@ class UpdateOverdueFees extends Command
                     continue;
                 }
 
+                if (! $fee->student || ! $fee->student->class_id) {
+                    continue;
+                }
+
                 // Get fee structure to check due date and late fee settings
                 $feeStructure = FeeStructure::where('fee_type_id', $fee->fee_type_id)
                     ->where('class_id', $fee->student->class_id)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -121,16 +122,32 @@ class UserController extends Controller
             'status' => $validated['status'],
         ]);
 
+        $passwordChanged = false;
         if (! empty($validated['password'])) {
             $user->update(['password' => Hash::make($validated['password'])]);
+            $passwordChanged = true;
         }
 
         $user->roles()->sync($validated['role_ids']);
 
         logActivity('update', "Updated user: {$user->name}", User::class, $user->id);
 
+        // If current user changed their own password, logout from current device and redirect to login
+        if ($passwordChanged && $user->id === Auth::id()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')
+                ->with('success', 'Your password was updated successfully. You have been logged out from all devices. Please log in with your new password.');
+        }
+
+        $message = $passwordChanged
+            ? 'User updated successfully. The user has been logged out from all devices.'
+            : 'User updated successfully';
+
         return redirect()->route('users.index')
-            ->with('success', 'User updated successfully');
+            ->with('success', $message);
     }
 
     public function destroy(User $user)

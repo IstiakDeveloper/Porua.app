@@ -27,6 +27,7 @@ import {
     BarChart3,
     CheckCircle2,
     Sparkles,
+    BadgePercent,
 } from 'lucide-react';
 
 interface AcademicYear {
@@ -39,10 +40,16 @@ interface KPIs {
     total_students: number;
     total_teachers: number;
     total_classes: number;
+    total_receivable?: number;
     total_billed: number;
+    total_gross?: number;
+    total_discount: number;
+    total_net?: number;
     total_collected: number;
     total_due: number;
     collection_rate: number;
+    discount_rate?: number;
+    due_rate?: number;
     today_collection: number;
     this_month_collection: number;
     liquid_balance: number;
@@ -66,6 +73,8 @@ interface AttendanceData {
 interface MonthlyTrend {
     month: number;
     name: string;
+    gross?: number;
+    discount?: number;
     billed: number;
     paid: number;
     due: number;
@@ -89,6 +98,8 @@ interface ClassSnapshot {
     name: string;
     student_count: number;
     billed: number;
+    discount?: number;
+    net?: number;
     paid: number;
     due: number;
     collection_rate: number;
@@ -259,31 +270,31 @@ export default function Dashboard({
                     </div>
 
                     {/* Operational Quick Actions */}
-                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 w-full md:w-auto">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Link
                             href="/fee-collections/create"
-                            className="px-3 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs inline-flex items-center justify-center sm:justify-start gap-1.5 transition cursor-pointer"
+                            className="px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                         >
                             <Receipt className="w-4 h-4 shrink-0" />
-                            <span>Collect (POS)</span>
+                            <span>Collect Fee (POS)</span>
                         </Link>
                         <Link
                             href="/teacher-attendance"
-                            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center justify-center sm:justify-start gap-1.5 border border-slate-200"
+                            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center gap-1.5 border border-slate-200"
                         >
                             <UserCheck className="w-3.5 h-3.5 text-slate-500" />
                             <span>Attendance</span>
                         </Link>
                         <Link
                             href="/accounting/reports/due-report"
-                            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center justify-center sm:justify-start gap-1.5 border border-slate-200"
+                            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center gap-1.5 border border-slate-200"
                         >
                             <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
                             <span>Due Report</span>
                         </Link>
                         <Link
                             href="/students/create"
-                            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center justify-center sm:justify-start gap-1.5 border border-slate-200"
+                            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center gap-1.5 border border-slate-200"
                         >
                             <UserPlus className="w-3.5 h-3.5 text-slate-500" />
                             <span>New Student</span>
@@ -291,8 +302,8 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                {/* 2. TOP 5 EXECUTIVE KPI CARDS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {/* 2. INSTITUTIONAL OVERVIEW (STUDENTS, TEACHERS, BANK BALANCE) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {/* Card 1: Students */}
                     <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-indigo-300 transition group">
                         <div className="flex items-center justify-between">
@@ -349,72 +360,8 @@ export default function Dashboard({
                         </Link>
                     </div>
 
-                    {/* Card 3: Session Collection */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition group">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-                                Fees Collected
-                            </span>
-                            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition">
-                                <Receipt className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                            <div>
-                                <p className="text-xl font-black text-emerald-700 font-mono tracking-tight">
-                                    ৳{formatCurrency(kpis.total_collected)}
-                                </p>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                    Target: ৳{formatCurrency(kpis.total_billed)}
-                                </p>
-                            </div>
-                            <CircularProgressBar
-                                percent={kpis.collection_rate}
-                                size={36}
-                                stroke={3.2}
-                                color="#059669"
-                                trackColor="#ecfdf5"
-                                showText={true}
-                            />
-                        </div>
-                        <Link
-                            href="/fee-collections"
-                            className="mt-3 text-[10.5px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center justify-between border-t border-slate-100 pt-2"
-                        >
-                            <span>Collection Ledger</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                        </Link>
-                    </div>
-
-                    {/* Card 4: Total Due */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-rose-300 transition group">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-                                Outstanding Due
-                            </span>
-                            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition">
-                                <AlertCircle className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-2">
-                            <p className="text-xl font-black text-rose-700 font-mono tracking-tight">
-                                ৳{formatCurrency(kpis.total_due)}
-                            </p>
-                            <p className="text-[11px] text-rose-600/90 mt-0.5 font-medium">
-                                Uncollected in {academicYear?.name || 'Session'}
-                            </p>
-                        </div>
-                        <Link
-                            href="/accounting/reports/due-report"
-                            className="mt-3 text-[10.5px] font-bold text-rose-600 hover:text-rose-800 flex items-center justify-between border-t border-slate-100 pt-2"
-                        >
-                            <span>12-Month Due Matrix</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                        </Link>
-                    </div>
-
-                    {/* Card 5: Liquid Accounts Balance */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition group">
+                    {/* Card 3: Liquid Accounts Balance */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition group sm:col-span-2 lg:col-span-1">
                         <div className="flex items-center justify-between">
                             <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
                                 Bank & Cash Balance
@@ -424,7 +371,7 @@ export default function Dashboard({
                             </div>
                         </div>
                         <div className="mt-2">
-                            <p className="text-xl font-black text-teal-800 font-mono tracking-tight">
+                            <p className="text-2xl font-black text-teal-800 font-mono tracking-tight">
                                 ৳{formatCurrency(kpis.liquid_balance)}
                             </p>
                             <p className="text-[11px] text-slate-500 mt-0.5">
@@ -438,6 +385,188 @@ export default function Dashboard({
                             <span>View Accounts</span>
                             <ArrowUpRight className="w-3.5 h-3.5" />
                         </Link>
+                    </div>
+                </div>
+
+                {/* 3. SESSION FINANCIAL METRICS (TOTAL RECEIVABLE, DISCOUNT, COLLECTION, DUE) */}
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>Session {academicYear?.name || 'Active'} Fee Overview</span>
+                            </h2>
+                            <span className="text-[11px] text-slate-500 font-normal">
+                                (আদায়যোগ্য, ছাড়, আদায় ও বকেয়া)
+                            </span>
+                        </div>
+                        <Link
+                            href="/accounting/reports/due-report"
+                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                        >
+                            <span>Full Due Report</span>
+                            <ChevronRight className="w-3 h-3" />
+                        </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {/* 1. Total Receivable (Total আদায়যোগ্য) */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-400 transition group">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <span className="text-[10.5px] font-bold text-slate-700 uppercase tracking-wider block">
+                                        Total Demand
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-medium">
+                                        মোট আদায়যোগ্য (Gross)
+                                    </span>
+                                </div>
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 transition">
+                                    <FileText className="w-4 h-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2.5">
+                                <p className="text-xl font-black text-slate-900 font-mono tracking-tight">
+                                    ৳{formatCurrency(kpis.total_receivable ?? kpis.total_billed)}
+                                </p>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Net: ৳{formatCurrency(kpis.total_net ?? (kpis.total_billed - kpis.total_discount))} (After Discount)
+                                </p>
+                            </div>
+                            <Link
+                                href="/fee-collections"
+                                className="mt-3 text-[10.5px] font-bold text-slate-600 hover:text-slate-900 flex items-center justify-between border-t border-slate-100 pt-2"
+                            >
+                                <span>Collection Ledger</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+
+                        {/* 2. Total Discount (ছাড় / ওয়েভার) */}
+                        <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-amber-300 transition group bg-amber-50/15">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <span className="text-[10.5px] font-bold text-amber-800 uppercase tracking-wider block">
+                                        Discounts & Waivers
+                                    </span>
+                                    <span className="text-[10px] text-amber-600 font-medium">
+                                        মোট ছাড় / ওয়েভার
+                                    </span>
+                                </div>
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center border border-amber-200 group-hover:scale-105 transition">
+                                    <BadgePercent className="w-4 h-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2.5 flex items-center justify-between gap-2">
+                                <div>
+                                    <p className="text-xl font-black text-amber-800 font-mono tracking-tight">
+                                        ৳{formatCurrency(kpis.total_discount)}
+                                    </p>
+                                    <p className="text-[11px] text-amber-700/90 mt-0.5 font-medium">
+                                        {kpis.discount_rate ?? Math.round((kpis.total_discount / (kpis.total_billed || 1)) * 100)}% Fee Concession
+                                    </p>
+                                </div>
+                                <CircularProgressBar
+                                    percent={kpis.discount_rate ?? Math.round((kpis.total_discount / (kpis.total_billed || 1)) * 100)}
+                                    size={36}
+                                    stroke={3.2}
+                                    color="#d97706"
+                                    trackColor="#fef3c7"
+                                    showText={true}
+                                />
+                            </div>
+                            <Link
+                                href="/accounting/reports/due-report"
+                                className="mt-3 text-[10.5px] font-bold text-amber-700 hover:text-amber-900 flex items-center justify-between border-t border-amber-100 pt-2"
+                            >
+                                <span>Discount Details</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+
+                        {/* 3. Fees Collected (মোট আদায়) */}
+                        <div className="bg-white rounded-xl border border-emerald-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition group bg-emerald-50/15">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <span className="text-[10.5px] font-bold text-emerald-800 uppercase tracking-wider block">
+                                        Fees Collected
+                                    </span>
+                                    <span className="text-[10px] text-emerald-600 font-medium">
+                                        মোট আদায় (Collection)
+                                    </span>
+                                </div>
+                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-200 group-hover:scale-105 transition">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2.5 flex items-center justify-between gap-2">
+                                <div>
+                                    <p className="text-xl font-black text-emerald-800 font-mono tracking-tight">
+                                        ৳{formatCurrency(kpis.total_collected)}
+                                    </p>
+                                    <p className="text-[11px] text-emerald-700/90 mt-0.5 font-medium">
+                                        {kpis.collection_rate}% Collected
+                                    </p>
+                                </div>
+                                <CircularProgressBar
+                                    percent={kpis.collection_rate}
+                                    size={36}
+                                    stroke={3.2}
+                                    color="#059669"
+                                    trackColor="#d1fae5"
+                                    showText={true}
+                                />
+                            </div>
+                            <Link
+                                href="/fee-collections"
+                                className="mt-3 text-[10.5px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center justify-between border-t border-emerald-100 pt-2"
+                            >
+                                <span>Collection Ledger</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+
+                        {/* 4. Outstanding Due (মোট বকেয়া) */}
+                        <div className="bg-white rounded-xl border border-rose-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-rose-300 transition group bg-rose-50/15">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <span className="text-[10.5px] font-bold text-rose-800 uppercase tracking-wider block">
+                                        Outstanding Due
+                                    </span>
+                                    <span className="text-[10px] text-rose-600 font-medium">
+                                        মোট বকেয়া (Due)
+                                    </span>
+                                </div>
+                                <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center border border-rose-200 group-hover:scale-105 transition">
+                                    <AlertCircle className="w-4 h-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2.5 flex items-center justify-between gap-2">
+                                <div>
+                                    <p className="text-xl font-black text-rose-800 font-mono tracking-tight">
+                                        ৳{formatCurrency(kpis.total_due)}
+                                    </p>
+                                    <p className="text-[11px] text-rose-700/90 mt-0.5 font-medium">
+                                        {kpis.due_rate ?? (100 - kpis.collection_rate)}% Uncollected
+                                    </p>
+                                </div>
+                                <CircularProgressBar
+                                    percent={kpis.due_rate ?? (100 - kpis.collection_rate)}
+                                    size={36}
+                                    stroke={3.2}
+                                    color="#e11d48"
+                                    trackColor="#ffe4e6"
+                                    showText={true}
+                                />
+                            </div>
+                            <Link
+                                href="/accounting/reports/due-report"
+                                className="mt-3 text-[10.5px] font-bold text-rose-700 hover:text-rose-800 flex items-center justify-between border-t border-rose-100 pt-2"
+                            >
+                                <span>12-Month Due Matrix</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
@@ -468,8 +597,8 @@ export default function Dashboard({
                         </div>
 
                         {/* Visual Bar Graph */}
-                        <div className="pt-4 pb-2 overflow-x-auto -webkit-overflow-scrolling-touch">
-                            <div className="h-44 min-w-[420px] sm:min-w-0 flex items-end justify-between gap-1.5 sm:gap-2">
+                        <div className="pt-4 pb-2">
+                            <div className="h-44 flex items-end justify-between gap-1.5 sm:gap-2">
                                 {monthlyTrends.map((m) => {
                                     const billedHeight = Math.max(Math.round((m.billed / maxMonthlyBilled) * 100), 4);
                                     const paidHeight = Math.max(Math.round((m.paid / maxMonthlyBilled) * 100), 4);
@@ -482,7 +611,10 @@ export default function Dashboard({
                                             {/* Hover Tooltip */}
                                             <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col bg-slate-900 text-white text-[10px] rounded px-2 py-1 shadow-lg pointer-events-none whitespace-nowrap z-20 font-mono">
                                                 <span className="font-bold text-slate-200">{m.name} {academicYear?.name}</span>
-                                                <span className="text-slate-300">Billed: ৳{formatCurrency(m.billed)}</span>
+                                                <span className="text-slate-300">Demand: ৳{formatCurrency(m.gross ?? m.billed)}</span>
+                                                {Boolean(m.discount && m.discount > 0) && (
+                                                    <span className="text-amber-300">Discount: ৳{formatCurrency(m.discount!)}</span>
+                                                )}
                                                 <span className="text-emerald-300 font-bold">Paid: ৳{formatCurrency(m.paid)}</span>
                                                 <span className="text-rose-300">Due: ৳{formatCurrency(m.due)}</span>
                                             </div>
@@ -641,48 +773,7 @@ export default function Dashboard({
                             </Link>
                         </div>
 
-                        {/* Mobile Collection Cards Stream (< 640px) */}
-                        <div className="block sm:hidden space-y-2 mt-3">
-                            {recentCollections.length > 0 ? (
-                                recentCollections.map((rcp) => (
-                                    <div key={rcp.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2.5">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5">
-                                                <p className="font-bold text-slate-900 text-xs truncate">{rcp.student_name}</p>
-                                                <span className="text-[10px] text-slate-500 font-mono">({rcp.class_name})</span>
-                                            </div>
-                                            <p className="text-[10.5px] text-slate-600 mt-0.5">{rcp.fee_type}</p>
-                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
-                                                <span>#{formatReceiptNumber(rcp.receipt_number)}</span>
-                                                <span>•</span>
-                                                <span>{rcp.date || '-'}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                                            <span className="font-mono font-bold text-emerald-700 text-sm">
-                                                ৳{formatCurrency(rcp.amount)}
-                                            </span>
-                                            <a
-                                                href={`/fee-collections/${rcp.id}/receipt?autoprint=1`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold inline-flex items-center gap-1 hover:bg-emerald-100"
-                                            >
-                                                <Printer className="w-3 h-3" />
-                                                <span>Receipt</span>
-                                            </a>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="py-6 text-center text-slate-400 text-xs">
-                                    No recent fee collection records found.
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Desktop Table View (>= 640px) */}
-                        <div className="hidden sm:block overflow-x-auto mt-2">
+                        <div className="overflow-x-auto mt-2">
                             <table className="w-full text-left text-xs border-collapse">
                                 <thead>
                                     <tr className="border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
@@ -835,42 +926,42 @@ export default function Dashboard({
                 <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                         {/* Tab Switcher */}
-                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg overflow-x-auto -webkit-overflow-scrolling-touch">
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
                             <button
                                 type="button"
                                 onClick={() => setBulletinTab('notices')}
-                                className={`px-2.5 sm:px-3 py-1 text-xs font-bold rounded-md transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition flex items-center gap-1.5 cursor-pointer ${
                                     bulletinTab === 'notices'
                                         ? 'bg-white text-slate-900 shadow-xs'
                                         : 'text-slate-600 hover:text-slate-900'
                                 }`}
                             >
                                 <Megaphone className="w-3.5 h-3.5 text-amber-500" />
-                                <span>Notices ({recentNotices.length})</span>
+                                <span>Recent Notices ({recentNotices.length})</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setBulletinTab('exams')}
-                                className={`px-2.5 sm:px-3 py-1 text-xs font-bold rounded-md transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition flex items-center gap-1.5 cursor-pointer ${
                                     bulletinTab === 'exams'
                                         ? 'bg-white text-slate-900 shadow-xs'
                                         : 'text-slate-600 hover:text-slate-900'
                                 }`}
                             >
                                 <ClipboardList className="w-3.5 h-3.5 text-indigo-500" />
-                                <span>Exams ({upcomingExams.length})</span>
+                                <span>Upcoming Exams ({upcomingExams.length})</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setBulletinTab('events')}
-                                className={`px-2.5 sm:px-3 py-1 text-xs font-bold rounded-md transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition flex items-center gap-1.5 cursor-pointer ${
                                     bulletinTab === 'events'
                                         ? 'bg-white text-slate-900 shadow-xs'
                                         : 'text-slate-600 hover:text-slate-900'
                                 }`}
                             >
                                 <CalendarDays className="w-3.5 h-3.5 text-emerald-500" />
-                                <span>Events ({upcomingEvents.length})</span>
+                                <span>Upcoming Events ({upcomingEvents.length})</span>
                             </button>
                         </div>
 

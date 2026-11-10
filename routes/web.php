@@ -38,6 +38,10 @@ use App\Http\Controllers\Communication\NoticeController;
 use App\Http\Controllers\Communication\NotificationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceSettingController;
+use App\Http\Controllers\Leave\LeaveApplicationController;
+use App\Http\Controllers\Leave\LeaveReportController;
+use App\Http\Controllers\Leave\LeaveTypeController;
+use App\Http\Controllers\Teacher\TeacherLeaveController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\Exam\ExamHallController;
 use App\Http\Controllers\Exam\ExamInvigilatorController;
@@ -222,6 +226,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::get('salary-payments', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'index'])->name('salary-payments.index');
         Route::post('salary-payments', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'store'])->name('salary-payments.store');
         Route::post('salary-payments/bulk', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'bulkStore'])->name('salary-payments.bulk');
+        Route::post('salary-payments/bulk-change-month', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'bulkChangeMonth'])->name('salary-payments.bulk-change-month');
         Route::get('salary-payments/{payment}/edit', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'edit'])->name('salary-payments.edit');
         Route::put('salary-payments/{payment}', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'update'])->name('salary-payments.update');
         Route::get('salary-payments/{payment}', [App\Http\Controllers\Salary\SalaryPaymentController::class, 'show'])->name('salary-payments.show');
@@ -264,6 +269,20 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::post('coaching/attendance/{batch}', [\App\Http\Controllers\Coaching\BatchAttendanceController::class, 'save'])->name('coaching.attendance.save');
         Route::get('coaching/attendance/{batch}/report', [\App\Http\Controllers\Coaching\BatchAttendanceController::class, 'report'])->name('coaching.attendance.report');
         Route::get('coaching/routine', [\App\Http\Controllers\Coaching\BatchRoutineController::class, 'index'])->name('coaching.routine.index');
+    });
+
+    // ============================================
+    // LEAVE MANAGEMENT (Super Admin, Admin, Principal Access)
+    // ============================================
+    Route::middleware(['role:Super Admin,Admin,Principal'])->group(function () {
+        Route::resource('leave-types', LeaveTypeController::class)->except(['create', 'show', 'edit']);
+        Route::get('leave-applications', [LeaveApplicationController::class, 'index'])->name('leave-applications.index');
+        Route::post('leave-applications', [LeaveApplicationController::class, 'store'])->name('leave-applications.store');
+        Route::post('leave-applications/{leave_application}/approve', [LeaveApplicationController::class, 'approve'])->name('leave-applications.approve');
+        Route::post('leave-applications/{leave_application}/reject', [LeaveApplicationController::class, 'reject'])->name('leave-applications.reject');
+        Route::post('leave-applications/{leave_application}/cancel', [LeaveApplicationController::class, 'cancel'])->name('leave-applications.cancel');
+        Route::get('leave-reports', [LeaveReportController::class, 'index'])->name('leave-reports.index');
+        Route::get('leave-reports/print', [LeaveReportController::class, 'print'])->name('leave-reports.print');
     });
 
     // ============================================
@@ -333,6 +352,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         // API endpoints for fee management
         Route::get('api/fee-structures', [FeeCollectionController::class, 'getFeesByClass'])->name('api.fee-structures');
         Route::get('api/fee-collections/student-dues', [FeeCollectionController::class, 'getStudentDues'])->name('api.student-dues');
+        Route::match(['get', 'post'], 'api/fee-collections/resync-student-dues', [FeeCollectionController::class, 'resyncStudentDues'])->name('api.resync-student-dues');
 
         Route::resource('fee-waivers', FeeWaiverController::class)->except(['show']);
 
@@ -537,6 +557,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::get('/profile', [\App\Http\Controllers\Student\StudentProfileController::class, 'show'])->name('profile.show');
         Route::put('/profile', [\App\Http\Controllers\Student\StudentProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo', [\App\Http\Controllers\Student\StudentProfileController::class, 'updatePhoto'])->name('profile.photo');
+        Route::put('/profile/password', [\App\Http\Controllers\Student\StudentProfileController::class, 'updatePassword'])->name('profile.password');
 
         // Attendance
         Route::get('/attendance', [\App\Http\Controllers\Student\StudentAttendanceController::class, 'index'])->name('attendance.index');
@@ -593,6 +614,11 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::post('/attendance/store', [\App\Http\Controllers\Teacher\TeacherAttendanceController::class, 'storeAttendance'])->name('attendance.store');
         Route::get('/attendance/history', [\App\Http\Controllers\Teacher\TeacherAttendanceController::class, 'history'])->name('attendance.history');
         Route::get('/attendance/my', [\App\Http\Controllers\Teacher\TeacherAttendanceController::class, 'myAttendance'])->name('attendance.my');
+
+        // Leave Management
+        Route::get('/leaves', [TeacherLeaveController::class, 'index'])->name('leaves.index');
+        Route::post('/leaves', [TeacherLeaveController::class, 'store'])->name('leaves.store');
+        Route::post('/leaves/{leave_application}/cancel', [TeacherLeaveController::class, 'cancel'])->name('leaves.cancel');
 
         // Students Management
         Route::get('/students', [\App\Http\Controllers\Teacher\TeacherStudentController::class, 'index'])->name('students.index');

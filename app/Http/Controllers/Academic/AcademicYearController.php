@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Academic;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\FeeStructure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -24,7 +25,15 @@ class AcademicYearController extends Controller
     {
         $this->authorize('create_classes');
 
-        return Inertia::render('Academic/Years/Create');
+        $sourceYears = AcademicYear::query()
+            ->orderByDesc('is_current')
+            ->orderByDesc('start_date')
+            ->get(['id', 'name', 'is_current']);
+
+        return Inertia::render('Academic/Years/Create', [
+            'sourceYears' => $sourceYears,
+            'defaultCopyFromId' => AcademicYear::where('is_current', true)->value('id'),
+        ]);
     }
 
     public function store(Request $request)
@@ -39,18 +48,46 @@ class AcademicYearController extends Controller
             'status' => 'required|in:active,completed,upcoming',
             'is_current' => 'boolean',
             'description' => 'nullable|string',
+            'copy_fee_structures' => 'boolean',
+            'copy_from_academic_year_id' => 'nullable|exists:academic_years,id',
         ]);
 
         if ($validated['is_current'] ?? false) {
             AcademicYear::where('is_current', true)->update(['is_current' => false]);
         }
 
+        $copyFeeStructures = (bool) ($validated['copy_fee_structures'] ?? false);
+        $copyFromId = $validated['copy_from_academic_year_id'] ?? null;
+        unset($validated['copy_fee_structures'], $validated['copy_from_academic_year_id']);
+
         $year = AcademicYear::create($validated);
 
-        logActivity('create', "Created academic year: {$year->name}", AcademicYear::class, $year->id);
+        $copiedCount = 0;
+        if ($copyFeeStructures && $copyFromId) {
+            $sourceStructures = FeeStructure::where('academic_year_id', $copyFromId)->get();
+            foreach ($sourceStructures as $structure) {
+                FeeStructure::create([
+                    'fee_type_id' => $structure->fee_type_id,
+                    'class_id' => $structure->class_id,
+                    'academic_year_id' => $year->id,
+                    'amount' => $structure->amount,
+                    'due_date' => $structure->due_date,
+                    'late_fee' => $structure->late_fee,
+                    'late_fee_days' => $structure->late_fee_days,
+                ]);
+                $copiedCount++;
+            }
+        }
+
+        $message = 'Academic year created successfully';
+        if ($copiedCount > 0) {
+            $message .= " — {$copiedCount} fee structure(s) copied";
+        }
+
+        logActivity('create', "Created academic year: {$year->name}".($copiedCount ? " (copied {$copiedCount} fee structures)" : ''), AcademicYear::class, $year->id);
 
         return redirect()->route('academic-years.index')
-            ->with('success', 'Academic year created successfully');
+            ->with('success', $message);
     }
 
     public function edit(AcademicYear $academicYear)

@@ -15,7 +15,8 @@ import {
     Clock,
     ArrowRight,
     Sparkles,
-    Award
+    Award,
+    CalendarClock
 } from 'lucide-react';
 
 interface Teacher {
@@ -145,7 +146,13 @@ export default function Dashboard({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 sm:gap-4">
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                    <Link href="/teacher/leaves" className="w-full sm:w-auto">
+                                        <button className="w-full sm:w-auto bg-emerald-500/90 hover:bg-emerald-500 text-white px-4 py-2 sm:px-5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 border border-white/20 shadow-lg flex items-center justify-center gap-1.5">
+                                            <CalendarClock className="w-4 h-4" />
+                                            Apply Leave
+                                        </button>
+                                    </Link>
                                     <Link href="/teacher/profile" className="w-full sm:w-auto">
                                         <button className="w-full sm:w-auto bg-white/20 backdrop-blur-sm text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold hover:bg-white/30 transition-all duration-300 border border-white/30 shadow-lg">
                                             View Profile

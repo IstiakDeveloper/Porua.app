@@ -170,6 +170,8 @@ class DatabaseSeeder extends Seeder
         ])->pluck('id');
         $librarian->permissions()->sync($librarianPermissions->toArray());
 
+        $this->call(LeaveManagementSeeder::class);
+
         $this->command->info('System roles and permissions seeded successfully! Run Setup Wizard to initialize institute and super admin.');
     }
 }

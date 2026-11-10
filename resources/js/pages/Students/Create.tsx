@@ -19,6 +19,7 @@ interface SchoolClass {
     fee_structures?: Array<{
         id: number;
         fee_type_id: number;
+        academic_year_id?: number;
         fee_type_name: string;
         frequency: string;
         amount: number;
@@ -142,40 +143,41 @@ export default function Create({ academicYears, classes }: CreateProps) {
         setData(prev => ({ ...prev, admission_number: generateAdmissionNumber() }));
     }, []);
 
-    // Load sections and fees when class changes
+    // Load sections when class changes; fee preview filtered by selected academic year
     useEffect(() => {
         if (data.class_id) {
-            // Load sections
             axios.get(`/students/sections/${data.class_id}`)
                 .then(response => setSections(response.data))
                 .catch(() => setSections([]));
-
-            // Load all fees for this class
-            const selectedClass = classes.find(c => c.id.toString() === data.class_id);
-
-            if (selectedClass?.fee_structures) {
-                setClassFees(selectedClass.fee_structures);
-
-                // Set monthly fee if available
-                const monthlyFee = selectedClass.fee_structures.find(f =>
-                    f.frequency === 'monthly' || f.fee_type_name.toLowerCase().includes('monthly')
-                );
-
-                if (monthlyFee) {
-                    setData(prev => ({ ...prev, monthly_fee: monthlyFee.amount.toString() }));
-                } else {
-                    setData(prev => ({ ...prev, monthly_fee: '' }));
-                }
-            } else {
-                setClassFees([]);
-                setData(prev => ({ ...prev, monthly_fee: '' }));
-            }
         } else {
             setSections([]);
+        }
+    }, [data.class_id]);
+
+    useEffect(() => {
+        if (!data.class_id) {
             setClassFees([]);
             setData(prev => ({ ...prev, monthly_fee: '' }));
+            return;
         }
-    }, [data.class_id, classes]);
+
+        const selectedClass = classes.find(c => c.id.toString() === data.class_id);
+        const allFees = selectedClass?.fee_structures || [];
+        const yearFees = data.academic_year_id
+            ? allFees.filter(f => String(f.academic_year_id) === String(data.academic_year_id))
+            : allFees;
+
+        setClassFees(yearFees);
+
+        const monthlyFee = yearFees.find(f =>
+            f.frequency === 'monthly' || f.fee_type_name.toLowerCase().includes('monthly')
+        );
+
+        setData(prev => ({
+            ...prev,
+            monthly_fee: monthlyFee ? monthlyFee.amount.toString() : '',
+        }));
+    }, [data.class_id, data.academic_year_id, classes]);
 
     // Update districts when division changes for present address
     useEffect(() => {
@@ -389,15 +391,19 @@ export default function Create({ academicYears, classes }: CreateProps) {
                             />
                         </div>
 
-                        {/* Class Fees Display */}
+                        {/* Class Fees Display — filtered by selected academic year */}
                         {classFees.length > 0 ? (
                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
                                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                                     <CheckCircle className="w-5 h-5 text-blue-600" />
-                                    Fee Structure for Selected Class (Will be auto-generated as Pending)
+                                    Fee Structure for Selected Class & Year
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    {classFees.map((fee, index) => (
+                                    {classFees.map((fee, index) => {
+                                        const isAdmissionOrSession =
+                                            fee.fee_type_name.toLowerCase().includes('admission') ||
+                                            fee.fee_type_name.toLowerCase().includes('session');
+                                        return (
                                         <div key={index} className="bg-white rounded-lg p-4 border-2 border-blue-300 shadow-md hover:shadow-lg transition">
                                             <div className="flex flex-col h-full">
                                                 <div className="flex items-start justify-between mb-2">
@@ -406,6 +412,12 @@ export default function Create({ academicYears, classes }: CreateProps) {
                                                         <span className="inline-flex items-center px-2 py-1 mt-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800 capitalize">
                                                             {fee.frequency.replace('_', ' ')}
                                                         </span>
+                                                        {isAdmissionOrSession && (
+                                                            <p className="text-xs text-green-700 mt-1">Auto-created on admission</p>
+                                                        )}
+                                                        {fee.frequency === 'monthly' && (
+                                                            <p className="text-xs text-gray-500 mt-1">Monthly — starts when session begins</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="mt-auto pt-2 border-t border-gray-200">
@@ -418,19 +430,24 @@ export default function Create({ academicYears, classes }: CreateProps) {
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                    <p className="text-sm text-yellow-800 font-medium flex items-center gap-2">
-                                        <CheckCircle className="w-4 h-4" />
-                                        All {classFees.length} fee(s) will be automatically created as "Pending" status for this student
+                                    <p className="text-sm text-yellow-800 font-medium">
+                                        Only Admission / Session fees are created as Pending now. Monthly fees will not backfill past months for a future academic year.
                                     </p>
                                 </div>
                             </div>
                         ) : (
                             data.class_id && (
-                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
-                                    <p className="text-gray-600">No fees configured for this class. Please set up fee structures first.</p>
+                                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200 text-center">
+                                    <p className="text-amber-900 font-medium">
+                                        এই Academic Year + Class-এর জন্য কোনো Fee Structure নেই।
+                                    </p>
+                                    <p className="text-amber-800 text-sm mt-1">
+                                        আগে Academic Year তৈরি করে &quot;Copy fee structures&quot; চালু রাখুন, অথবা Fees → Structures থেকে সেট করুন।
+                                    </p>
                                 </div>
                             )
                         )}
