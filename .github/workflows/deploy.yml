@@ -188,6 +188,9 @@ jobs:
 
           cd "$DEPLOY_PATH"
 
+          rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+          "$PHP" artisan package:discover --ansi
+
           echo "Refreshing Laravel cache..."
 
           "$PHP" artisan config:clear
