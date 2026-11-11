@@ -147,6 +147,7 @@ export default function Create({
     const [selectedDueIds, setSelectedDueIds] = useState<number[]>([]);
     const [dueDiscounts, setDueDiscounts] = useState<Record<number, number>>({});
     const [selectedAdvance, setSelectedAdvance] = useState<{ month: number; year: number; fee_structure_id: number; amount: number; discount: number; label: string }[]>([]);
+    const [bulkAdvanceDiscount, setBulkAdvanceDiscount] = useState<string>('');
 
     const [selectedAccountId, setSelectedAccountId] = useState<number>(
         defaultAccountId ?? accounts[0]?.id ?? 1
@@ -202,6 +203,7 @@ export default function Create({
         setSelectedDueIds([]);
         setDueDiscounts({});
         setSelectedAdvance([]);
+        setBulkAdvanceDiscount('');
         setTenderedCash('');
 
         try {
@@ -240,12 +242,22 @@ export default function Create({
             } else if (preselectedMonth && data.advance_months && data.advance_months.length > 0) {
                 const advMatch = data.advance_months.find((a: AdvanceMonth) => a.month === preselectedMonth);
                 if (advMatch) {
+                    let initialDiscount = 0;
+                    if (data.active_waivers && data.active_waivers.length > 0) {
+                        const waiver = data.active_waivers[0];
+                        if (waiver.waiver_type === 'percentage') {
+                            initialDiscount = Math.round((Number(advMatch.amount) * Number(waiver.waiver_value)) / 100);
+                        } else if (waiver.waiver_type === 'fixed') {
+                            initialDiscount = Math.min(Number(advMatch.amount), Number(waiver.waiver_value));
+                        }
+                    }
+
                     setSelectedAdvance([{
                         month: advMatch.month,
                         year: advMatch.year,
                         fee_structure_id: advMatch.fee_structure_id || 0,
                         amount: advMatch.amount,
-                        discount: 0,
+                        discount: initialDiscount,
                         label: advMatch.label,
                     }]);
                 }
@@ -311,6 +323,33 @@ export default function Create({
         setDueDiscounts((prev) => ({ ...prev, [id]: Math.max(0, num) }));
     };
 
+    const handleAdvanceDiscountChange = (key: string, val: string) => {
+        const num = val === '' ? 0 : parseFloat(val);
+        const safeNum = isNaN(num) ? 0 : Math.max(0, num);
+        setSelectedAdvance((prev) =>
+            prev.map((a) => {
+                if (`${a.year}-${a.month}` === key) {
+                    return {
+                        ...a,
+                        discount: Math.min(Number(a.amount), safeNum),
+                    };
+                }
+                return a;
+            })
+        );
+    };
+
+    const handleApplyBulkAdvanceDiscount = () => {
+        const num = bulkAdvanceDiscount === '' ? 0 : parseFloat(bulkAdvanceDiscount);
+        const safeNum = isNaN(num) ? 0 : Math.max(0, num);
+        setSelectedAdvance((prev) =>
+            prev.map((a) => ({
+                ...a,
+                discount: Math.min(Number(a.amount), safeNum),
+            }))
+        );
+    };
+
     const toggleAdvanceMonth = (item: AdvanceMonth) => {
         if (!item.fee_structure_id) return;
         const key = `${item.year}-${item.month}`;
@@ -319,6 +358,16 @@ export default function Create({
         if (exists) {
             setSelectedAdvance((prev) => prev.filter((a) => `${a.year}-${a.month}` !== key));
         } else {
+            let initialDiscount = 0;
+            if (activeWaivers && activeWaivers.length > 0) {
+                const waiver = activeWaivers[0];
+                if (waiver.waiver_type === 'percentage') {
+                    initialDiscount = Math.round((Number(item.amount) * Number(waiver.waiver_value)) / 100);
+                } else if (waiver.waiver_type === 'fixed') {
+                    initialDiscount = Math.min(Number(item.amount), Number(waiver.waiver_value));
+                }
+            }
+
             setSelectedAdvance((prev) => [
                 ...prev,
                 {
@@ -326,7 +375,7 @@ export default function Create({
                     year: item.year,
                     fee_structure_id: item.fee_structure_id!,
                     amount: item.amount,
-                    discount: 0,
+                    discount: initialDiscount,
                     label: item.label,
                 },
             ]);
@@ -492,6 +541,7 @@ export default function Create({
                                             setDues([]);
                                             setSelectedDueIds([]);
                                             setSelectedAdvance([]);
+                                            setBulkAdvanceDiscount('');
                                             setTimeout(() => searchInputRef.current?.focus(), 100);
                                         }}
                                         className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
@@ -853,7 +903,10 @@ export default function Create({
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
                                     {advanceMonths.map((adv) => {
                                         const key = `${adv.year}-${adv.month}`;
-                                        const isSelected = selectedAdvance.some((a) => `${a.year}-${a.month}` === key);
+                                        const selAdv = selectedAdvance.find((a) => `${a.year}-${a.month}` === key);
+                                        const isSelected = !!selAdv;
+                                        const currentDiscount = selAdv ? Number(selAdv.discount || 0) : 0;
+                                        const netAmount = Math.max(0, Number(adv.amount) - currentDiscount);
 
                                         return (
                                             <button
@@ -878,14 +931,129 @@ export default function Create({
                                                 </div>
                                                 <div className="flex items-center justify-between w-full text-[10px]">
                                                     <span className="text-slate-500 truncate">{adv.fee_type_name}</span>
-                                                    <span className="font-mono font-bold text-slate-900">
-                                                        ৳{formatAmount(adv.amount)}
-                                                    </span>
+                                                    <div className="text-right">
+                                                        {currentDiscount > 0 ? (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-[9px] text-slate-400 line-through">
+                                                                    ৳{formatAmount(adv.amount)}
+                                                                </span>
+                                                                <span className="font-mono font-bold text-emerald-700">
+                                                                    ৳{formatAmount(netAmount)}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="font-mono font-bold text-slate-900">
+                                                                ৳{formatAmount(adv.amount)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </button>
                                         );
                                     })}
                                 </div>
+
+                                {/* Selected Advance Months with Discount Input */}
+                                {selectedAdvance.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                                            <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                Selected Advance Months ({selectedAdvance.length})
+                                            </h4>
+                                            <span className="text-[10px] text-slate-500">
+                                                Set discount per advance month
+                                            </span>
+                                        </div>
+
+                                        {selectedAdvance.length > 1 && (
+                                            <div className="flex items-center gap-2 p-2 rounded-md bg-emerald-50/60 border border-emerald-100 text-xs">
+                                                <span className="text-[11px] text-emerald-800 font-medium whitespace-nowrap">
+                                                    Apply to all ({selectedAdvance.length}) months:
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="৳ Disc"
+                                                    value={bulkAdvanceDiscount}
+                                                    onChange={(e) => setBulkAdvanceDiscount(e.target.value)}
+                                                    className="w-20 text-[11px] py-0.5 px-2 rounded border border-emerald-300 bg-white text-slate-900 font-mono text-right"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleApplyBulkAdvanceDiscount}
+                                                    className="px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer"
+                                                >
+                                                    Apply All
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
+                                            {selectedAdvance.map((adv) => {
+                                                const key = `${adv.year}-${adv.month}`;
+                                                const currentDiscount = Number(adv.discount || 0);
+                                                const lineTotal = Math.max(0, Number(adv.amount) - currentDiscount);
+
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className="p-2 sm:px-3 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-emerald-50/20 transition"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                                            <div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-xs font-bold text-slate-900">
+                                                                        {adv.label}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                                        Advance
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-[10px] text-slate-500">
+                                                                    Base Fee: ৳{formatAmount(adv.amount)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between sm:justify-end gap-2 pl-4 sm:pl-0">
+                                                            <div className="flex items-center gap-1">
+                                                                <label className="text-[10px] text-slate-500 whitespace-nowrap">
+                                                                    Disc:
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max={adv.amount}
+                                                                    value={adv.discount === 0 ? '' : adv.discount}
+                                                                    placeholder="0"
+                                                                    onChange={(e) => handleAdvanceDiscountChange(key, e.target.value)}
+                                                                    className="w-16 text-[11px] py-0.5 px-1.5 rounded border border-slate-300 bg-white text-slate-900 text-right font-mono focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                                                />
+                                                            </div>
+
+                                                            <div className="text-right min-w-[70px]">
+                                                                <span className="text-xs font-bold font-mono text-emerald-700">
+                                                                    ৳{formatAmount(lineTotal)}
+                                                                </span>
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedAdvance((prev) => prev.filter((a) => `${a.year}-${a.month}` !== key))}
+                                                                className="w-6 h-6 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 inline-flex items-center justify-center transition cursor-pointer"
+                                                                title="Remove advance month"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 

@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
-use App\Models\Teacher;
-use App\Models\StudentAttendance;
-use App\Models\Student;
+use App\Models\DeviceSetting;
 use App\Models\Section;
+use App\Models\Student;
+use App\Models\StudentAttendance;
+use App\Models\Teacher;
+use App\Models\TeacherAttendance;
+use App\Support\TeacherAttendanceCalculator;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class TeacherAttendanceController extends Controller
 {
@@ -205,24 +208,89 @@ class TeacherAttendanceController extends Controller
         $user = $request->user();
         $teacher = Teacher::where('user_id', $user->id)->firstOrFail();
 
-        $month = $request->input('month', Carbon::now()->month);
-        $year = $request->input('year', Carbon::now()->year);
+        $month = (int) $request->input('month', Carbon::now()->month);
+        $year = (int) $request->input('year', Carbon::now()->year);
 
-        $attendanceRecords = \App\Models\TeacherAttendance::where('teacher_id', $teacher->id)
-            ->whereYear('date', $year)
-            ->whereMonth('date', $month)
-            ->orderBy('date', 'desc')
-            ->get();
+        $settings = DeviceSetting::first();
+        $weekendDays = TeacherAttendanceCalculator::weekendDays($settings);
 
+        $startOfMonth = Carbon::create($year, $month, 1)->startOfMonth();
+        $endOfMonth = $startOfMonth->copy()->endOfMonth();
+        $holidayMap = TeacherAttendanceCalculator::holidayMap(
+            $startOfMonth->format('Y-m-d'),
+            $endOfMonth->format('Y-m-d')
+        );
+
+        $records = TeacherAttendance::where('teacher_id', $teacher->id)
+            ->whereBetween('date', [$startOfMonth->format('Y-m-d'), $endOfMonth->format('Y-m-d')])
+            ->get()
+            ->keyBy(fn ($row) => Carbon::parse($row->getRawOriginal('date'))->format('Y-m-d'));
+
+        // For current month, evaluate up to today unless there are later records (e.g. approved leave)
+        $evalEnd = $endOfMonth->isFuture() ? now()->startOfDay() : $endOfMonth->startOfDay();
+        $latestRecordDate = $records->keys()->sort()->last();
+        if ($latestRecordDate && Carbon::parse($latestRecordDate)->gt($evalEnd)) {
+            $evalEnd = Carbon::parse($latestRecordDate)->startOfDay();
+        }
+
+        $attendanceRecords = [];
         $summary = [
-            'present' => $attendanceRecords->where('status', 'present')->count(),
-            'absent' => $attendanceRecords->where('status', 'absent')->count(),
-            'late' => $attendanceRecords->where('status', 'late')->count(),
-            'half_day' => $attendanceRecords->where('status', 'half_day')->count(),
-            'total_days' => $attendanceRecords->count(),
+            'present' => 0,
+            'absent' => 0,
+            'late' => 0,
+            'half_day' => 0,
+            'early_leave' => 0,
+            'leave' => 0,
+            'holiday' => 0,
+            'weekend' => 0,
+            'total_days' => 0,
         ];
 
-        $yearlyAttendance = \App\Models\TeacherAttendance::where('teacher_id', $teacher->id)
+        for ($cursor = $evalEnd->copy(); $cursor->gte($startOfMonth); $cursor->subDay()) {
+            $ymd = $cursor->format('Y-m-d');
+            $rec = $records->get($ymd);
+
+            $resolved = TeacherAttendanceCalculator::resolveDay(
+                $ymd,
+                $rec,
+                $settings,
+                $weekendDays,
+                $holidayMap,
+                now(),
+                'teacher'
+            );
+
+            $status = $resolved['status'] ?? 'absent';
+            $checkIn = $resolved['in_time_formatted'];
+            $checkOut = $resolved['out_time_formatted'];
+            $remarks = $rec?->reason ?: $resolved['auto_remarks'];
+
+            $attendanceRecords[] = [
+                'id' => $rec?->id ?? (int) $cursor->format('Ymd'),
+                'date' => $ymd,
+                'day' => $cursor->format('l'),
+                'status' => $status,
+                'in_time' => $resolved['in_time'],
+                'out_time' => $resolved['out_time'],
+                'in_time_formatted' => $checkIn,
+                'out_time_formatted' => $checkOut,
+                'check_in_time' => $checkIn,
+                'check_out_time' => $checkOut,
+                'hours' => $resolved['hours'],
+                'remarks' => $remarks,
+                'auto_remarks' => $resolved['auto_remarks'],
+                'reason' => $rec?->reason,
+            ];
+
+            if ($status && isset($summary[$status])) {
+                $summary[$status]++;
+            }
+        }
+
+        // Institutional working days (excluding weekends and official holidays)
+        $summary['total_days'] = max(0, count($attendanceRecords) - ($summary['weekend'] + $summary['holiday']));
+
+        $yearlyAttendance = TeacherAttendance::where('teacher_id', $teacher->id)
             ->whereYear('date', $year)
             ->get();
 
@@ -230,6 +298,7 @@ class TeacherAttendanceController extends Controller
             'present' => $yearlyAttendance->where('status', 'present')->count(),
             'absent' => $yearlyAttendance->where('status', 'absent')->count(),
             'late' => $yearlyAttendance->where('status', 'late')->count(),
+            'half_day' => $yearlyAttendance->where('status', 'half_day')->count(),
             'total_days' => $yearlyAttendance->count(),
         ];
 

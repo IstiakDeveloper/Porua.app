@@ -9,6 +9,7 @@ use App\Models\FeeStructure;
 use App\Models\SchoolClass;
 use App\Models\Section;
 use App\Models\Student;
+use App\Models\StudentSession;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,18 +23,57 @@ class StudentController extends Controller
     {
         $this->authorize('view_students');
 
+        $yearId = $request->academic_year_id;
+
         $students = Student::with(['user', 'academicYear', 'schoolClass', 'section'])
-            ->when($request->search, function ($q) use ($request) {
-                $q->where('admission_number', 'like', "%{$request->search}%")
-                    ->orWhere('roll_number', 'like', "%{$request->search}%")
-                    ->orWhereHas('user', fn ($q) => $q->where('name', 'like', "%{$request->search}%"));
+            ->when($request->search, function ($q) use ($request, $yearId) {
+                $term = "%{$request->search}%";
+                $q->where(function ($q) use ($term, $yearId) {
+                    $q->where('admission_number', 'like', $term)
+                        ->orWhere('roll_number', 'like', $term)
+                        ->orWhereHas('user', fn ($q) => $q->where('name', 'like', $term));
+
+                    if ($yearId) {
+                        $q->orWhereHas('sessions', function ($q) use ($term, $yearId) {
+                            $q->where('academic_year_id', $yearId)
+                                ->where('roll_number', 'like', $term);
+                        });
+                    }
+                });
             })
-            ->when($request->class_id, fn ($q) => $q->where('class_id', $request->class_id))
-            ->when($request->section_id, fn ($q) => $q->where('section_id', $request->section_id))
-            ->when($request->academic_year_id, fn ($q) => $q->where('academic_year_id', $request->academic_year_id))
+            ->when($yearId, function ($q) use ($request, $yearId) {
+                $q->whereHas('sessions', function ($q) use ($request, $yearId) {
+                    $q->where('academic_year_id', $yearId)
+                        ->when($request->class_id, fn ($q) => $q->where('class_id', $request->class_id))
+                        ->when($request->section_id, fn ($q) => $q->where('section_id', $request->section_id));
+                });
+            }, function ($q) use ($request) {
+                $q->when($request->class_id, fn ($q) => $q->where('class_id', $request->class_id))
+                    ->when($request->section_id, fn ($q) => $q->where('section_id', $request->section_id));
+            })
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->latest('admission_date')
             ->paginate(20)->withQueryString();
+
+        if ($yearId) {
+            $students->getCollection()->load([
+                'sessions' => fn ($q) => $q->where('academic_year_id', $yearId)->with(['schoolClass', 'section', 'academicYear']),
+            ]);
+
+            $students->through(function (Student $student) {
+                $session = $student->sessions->first();
+                if ($session) {
+                    $student->setRelation('schoolClass', $session->schoolClass);
+                    $student->setRelation('section', $session->section);
+                    $student->setRelation('academicYear', $session->academicYear);
+                    $student->roll_number = $session->roll_number;
+                    $student->setAttribute('session_status', $session->status);
+                }
+                $student->unsetRelation('sessions');
+
+                return $student;
+            });
+        }
 
         return Inertia::render('Students/Index', [
             'students' => $students,
@@ -325,6 +365,8 @@ class StudentController extends Controller
                 'photo' => $photoPath,
                 'status' => $validated['status'],
             ]);
+
+            StudentSession::syncPlacement($student);
 
             DB::commit();
 
@@ -733,6 +775,8 @@ class StudentController extends Controller
                 'photo' => $photoPath,
                 'status' => $validated['status'],
             ]);
+
+            StudentSession::syncPlacement($student);
 
             \Log::info('Student update result: '.($updated ? 'SUCCESS' : 'FAILED'));
             \Log::info('Updated student data:', $student->fresh()->toArray());

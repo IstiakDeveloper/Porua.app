@@ -5,6 +5,7 @@ import Button from '@/Components/Button';
 import Badge from '@/Components/Badge';
 import DeleteModal from '@/Components/DeleteModal';
 import IndexPagination from '@/Components/IndexPagination';
+import Modal from '@/Components/Modal';
 import {
     Trophy,
     Eye,
@@ -41,6 +42,8 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
     const [isDeleting, setIsDeleting] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'generate' | 'publish' | null>(null);
+    const [actionError, setActionError] = useState('');
 
     const handleFilter = (newExamId: string, newClassId: string) => {
         router.get(
@@ -50,35 +53,55 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
         );
     };
 
-    const handleGenerate = () => {
+    const requireSelection = () => {
         if (!examId || !classId) {
-            alert('Please select both an Examination and Class from the dropdowns below.');
+            setActionError('Select both an examination and a class before continuing.');
+            return false;
+        }
+        setActionError('');
+        return true;
+    };
+
+    const handleGenerate = () => {
+        if (!requireSelection()) {
             return;
         }
-        if (confirm('Calculate and generate GPA/Rank results for the selected exam and class?')) {
+        setPendingAction('generate');
+    };
+
+    const handlePublish = () => {
+        if (!requireSelection()) {
+            return;
+        }
+        setPendingAction('publish');
+    };
+
+    const confirmPendingAction = () => {
+        if (pendingAction === 'generate') {
             setIsGenerating(true);
             router.post(
                 '/results/generate',
                 { exam_id: examId, class_id: classId },
                 {
-                    onFinish: () => setIsGenerating(false),
+                    onFinish: () => {
+                        setIsGenerating(false);
+                        setPendingAction(null);
+                    },
                 }
             );
-        }
-    };
-
-    const handlePublish = () => {
-        if (!examId || !classId) {
-            alert('Please select both an Examination and Class from the dropdowns below.');
             return;
         }
-        if (confirm('Are you sure you want to publish these results? Students will immediately be able to view their scorecards.')) {
+
+        if (pendingAction === 'publish') {
             setIsPublishing(true);
             router.post(
                 '/results/publish',
                 { exam_id: examId, class_id: classId },
                 {
-                    onFinish: () => setIsPublishing(false),
+                    onFinish: () => {
+                        setIsPublishing(false);
+                        setPendingAction(null);
+                    },
                 }
             );
         }
@@ -243,6 +266,12 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                         <p className="text-xs text-blue-600 mt-1">Cohort overall average</p>
                     </div>
                 </div>
+
+                {actionError && (
+                    <p className="text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5">
+                        {actionError}
+                    </p>
+                )}
 
                 {/* Filters */}
                 <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -452,6 +481,31 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                 message={`Are you sure you want to delete the result record for "${deleteModal.name}"?`}
                 isDeleting={isDeleting}
             />
+
+            <Modal
+                show={pendingAction !== null}
+                onClose={() => setPendingAction(null)}
+                title={pendingAction === 'publish' ? 'Publish results' : 'Generate results'}
+                maxWidth="md"
+            >
+                <p className="text-sm text-slate-600">
+                    {pendingAction === 'publish'
+                        ? 'Publish these results? Students and parents will be able to open their marksheets right away.'
+                        : 'Calculate GPA, grade, and rank for the selected examination and class?'}
+                </p>
+                <div className="mt-5 flex items-center justify-end gap-2">
+                    <Button variant="outline" onClick={() => setPendingAction(null)}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={confirmPendingAction}
+                        loading={isGenerating || isPublishing}
+                        className={pendingAction === 'publish' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    >
+                        {pendingAction === 'publish' ? 'Publish' : 'Generate'}
+                    </Button>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

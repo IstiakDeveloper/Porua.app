@@ -6,7 +6,7 @@ import Badge from '@/Components/Badge';
 import StatusToggle from '@/Components/StatusToggle';
 import DeleteModal from '@/Components/DeleteModal';
 import IndexPagination from '@/Components/IndexPagination';
-import { Plus, Edit, Trash2, Eye, Users, Search, Mail, Phone, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, Search, Mail, Phone, Filter, GraduationCap } from 'lucide-react';
 
 interface Student {
     id: number;
@@ -20,6 +20,7 @@ interface Student {
     photo: string | null;
     photo_url: string | null;
     status: string;
+    session_status?: string;
     academic_year?: { name: string };
     school_class?: { name: string };
     section?: { name: string };
@@ -44,7 +45,7 @@ interface IndexProps {
     };
     filters?: { search?: string; class_id?: string; section_id?: string; academic_year_id?: string; status?: string };
     classes: Array<{ id: number; name: string }>;
-    academicYears: Array<{ id: number; name: string }>;
+    academicYears: Array<{ id: number; name: string; is_current?: boolean }>;
     canToggleStatus?: boolean;
 }
 
@@ -56,6 +57,7 @@ const canToggleStudentStatus = (status: string) => TOGGLEABLE_STUDENT_STATUSES.i
 
 export default function Index({ students, filters = {}, classes, academicYears, canToggleStatus = false }: IndexProps) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
+    const [academicYearId, setAcademicYearId] = useState(filters.academic_year_id || '');
     const [classId, setClassId] = useState(filters.class_id || '');
     const [status, setStatus] = useState(filters.status || '');
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: number | null; name: string }>({ isOpen: false, id: null, name: '' });
@@ -74,10 +76,15 @@ export default function Index({ students, filters = {}, classes, academicYears, 
     const handleDeleteCancel = () => setDeleteModal({ isOpen: false, id: null, name: '' });
 
     const handleSearch = () => {
-        router.get('/students', { search: searchTerm, class_id: classId || undefined, status: status || undefined }, { preserveState: true });
+        router.get('/students', {
+            search: searchTerm,
+            class_id: classId || undefined,
+            status: status || undefined,
+            academic_year_id: academicYearId || undefined,
+        }, { preserveState: true });
     };
     const handleReset = () => {
-        setSearchTerm(''); setClassId(''); setStatus('');
+        setSearchTerm(''); setAcademicYearId(''); setClassId(''); setStatus('');
         router.get('/students');
     };
 
@@ -98,12 +105,26 @@ export default function Index({ students, filters = {}, classes, academicYears, 
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                        <h1 className="text-xl font-semibold text-gray-900">Students</h1>
-                        <p className="text-xs text-gray-500 mt-0.5">Manage student records</p>
+                        <h1 className="text-xl font-semibold text-gray-900">Students Directory</h1>
+                        <p className="text-xs text-gray-500 mt-0.5">Manage student enrolments, profiles, and academic records</p>
                     </div>
-                    <Link href="/students/create" className="self-start sm:self-auto">
-                        <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add Student</Button>
-                    </Link>
+                    <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                        <Link href="/student-parents">
+                            <Button size="sm" variant="secondary" icon={<Users className="w-3.5 h-3.5" />}>
+                                Parents Directory
+                            </Button>
+                        </Link>
+                        <Link href="/student-promotions">
+                            <Button size="sm" variant="secondary" icon={<GraduationCap className="w-3.5 h-3.5" />}>
+                                Promotions
+                            </Button>
+                        </Link>
+                        <Link href="/students/create">
+                            <Button size="sm" icon={<Plus className="w-4 h-4" />}>
+                                Add Student
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 shadow-xs">
@@ -123,6 +144,18 @@ export default function Index({ students, filters = {}, classes, academicYears, 
                             </div>
                         </div>
                         <div className="grid grid-cols-2 sm:flex items-center gap-2">
+                            <select
+                                value={academicYearId}
+                                onChange={(e) => setAcademicYearId(e.target.value)}
+                                className="col-span-2 text-sm px-2.5 py-2 border border-gray-200 rounded-lg sm:w-40 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                            >
+                                <option value="">All Sessions</option>
+                                {academicYears.map(year => (
+                                    <option key={year.id} value={year.id}>
+                                        {year.name}{year.is_current ? ' (Current)' : ''}
+                                    </option>
+                                ))}
+                            </select>
                             <select
                                 value={classId}
                                 onChange={(e) => setClassId(e.target.value)}
@@ -153,6 +186,11 @@ export default function Index({ students, filters = {}, classes, academicYears, 
                             </button>
                         </div>
                     </div>
+                    {academicYearId && (
+                        <p className="text-[11px] text-slate-500 mt-2">
+                            Class and roll are from this session, including students promoted since then.
+                        </p>
+                    )}
                 </div>
 
                 {/* Mobile Cards Feed (< 768px) */}
@@ -175,6 +213,7 @@ export default function Index({ students, filters = {}, classes, academicYears, 
                                             </Link>
                                             <p className="text-xs text-gray-500 truncate">
                                                 {student.school_class?.name}{student.section ? ` • Sec ${student.section.name}` : ''}
+                                                {student.session_status && student.session_status !== 'enrolled' ? ` • ${student.session_status.replace('_', ' ')}` : ''}
                                             </p>
                                         </div>
                                     </div>
@@ -279,7 +318,10 @@ export default function Index({ students, filters = {}, classes, academicYears, 
                                             {student.academic_year && <p className="text-xs text-gray-500">{student.academic_year.name}</p>}
                                         </td>
                                         <td className="px-4 py-3 text-xs text-gray-600">
-                                            {student.school_class?.name}{student.section ? ` / ${student.section.name}` : ''}
+                                            <p>{student.school_class?.name}{student.section ? ` / ${student.section.name}` : ''}</p>
+                                            {student.session_status && student.session_status !== 'enrolled' && (
+                                                <p className="text-[10px] uppercase tracking-wide text-slate-400">{student.session_status.replace('_', ' ')}</p>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-xs text-gray-600">
                                             {student.email && <div className="flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</div>}

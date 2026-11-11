@@ -257,13 +257,13 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
         title: 'Family Portal',
         roles: ['Parent'],
         items: [
-            { name: 'My Children', href: '/parent/children', icon: <Users className={iconClass} />, roles: ['Parent'] },
             { name: 'Attendance', href: '/parent/attendance', icon: <ClipboardCheck className={iconClass} />, roles: ['Parent'] },
-            { name: 'Exams & Results', href: '/parent/exams', icon: <Award className={iconClass} />, roles: ['Parent'] },
-            { name: 'Fees & Invoices', href: '/parent/fees', icon: <DollarSign className={iconClass} />, roles: ['Parent'] },
+            { name: 'Results', href: '/parent/exams', icon: <Award className={iconClass} />, roles: ['Parent'] },
+            { name: 'Fees', href: '/parent/fees', icon: <DollarSign className={iconClass} />, roles: ['Parent'] },
+            { name: 'Calendar', href: '/parent/calendar', icon: <CalendarDays className={iconClass} />, roles: ['Parent'] },
             { name: 'Notices', href: '/parent/notices', icon: <Megaphone className={iconClass} />, roles: ['Parent'] },
             { name: 'Messages', href: '/parent/messages', icon: <Bell className={iconClass} />, roles: ['Parent'] },
-            { name: 'My Profile', href: '/parent/profile', icon: <User className={iconClass} />, roles: ['Parent'] },
+            { name: 'Profile', href: '/parent/profile', icon: <User className={iconClass} />, roles: ['Parent'] },
         ],
     },
     {

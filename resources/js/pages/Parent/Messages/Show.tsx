@@ -1,125 +1,131 @@
+import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { ArrowLeft, Mail, User, Calendar, Paperclip, CheckCircle } from 'lucide-react';
-
-function route(name: string, params?: any): string {
-    const routes: Record<string, string> = {
-        'parent.messages.index': '/parent/messages',
-    };
-    return routes[name] || '/';
-}
+import ParentPage from '@/Components/Parent/ParentPage';
+import { route } from '@/Components/Parent/route';
+import {
+    ArrowLeft,
+    Paperclip,
+    User,
+    Clock,
+    FileText,
+    Download,
+    MessageSquare,
+    Send
+} from 'lucide-react';
 
 interface Message {
-    id: number;
     subject: string;
     message: string;
     sender_name: string;
-    recipient_name: string;
-    attachments: any;
+    receiver_name: string;
+    attachments: Array<string | { url?: string; name?: string }>;
     read_at: string | null;
     created_at: string;
 }
 
-interface Props {
-    message: Message;
+function fileHref(file: string | { url?: string; name?: string }): string {
+    if (typeof file !== 'string') return file.url || '#';
+    if (file.startsWith('http') || file.startsWith('/')) return file;
+    return `/storage/${file}`;
 }
 
-export default function Show({ message }: Props) {
+function fileName(file: string | { url?: string; name?: string }): string {
+    if (typeof file !== 'string') return file.name || 'Attachment';
+    return file.split('/').pop() || 'Attachment';
+}
+
+export default function Show({ message }: { message: Message }) {
     return (
         <AuthenticatedLayout>
-            <Head title={message.subject} />
+            <Head title={`Message - ${message.subject}`} />
 
-            <div className="py-6">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <Link href={route('parent.messages.index')}>
-                            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Messages
-                            </button>
-                        </Link>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-start gap-3 flex-1">
-                                    <Mail className="h-6 w-6 text-indigo-600 mt-1" />
-                                    <div className="flex-1">
-                                        <h1 className="text-2xl font-bold text-gray-900 mb-2">{message.subject}</h1>
-                                        {message.read_at && (
-                                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border border-green-600 text-green-600">
-                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                Read
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
+            <ParentPage
+                title={message.subject}
+                subtitle={`Sent on ${message.created_at}`}
+                action={
+                    <Link
+                        href={route('parent.messages.index')}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        Back to Inbox
+                    </Link>
+                }
+            >
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {/* 1. Header Metadata Bar */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold shrink-0">
+                                {message.sender_name?.charAt(0) || 'U'}
                             </div>
-
-                            <div className="border-t pt-4 space-y-3">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <User className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-600">From:</span>
-                                    <span className="font-medium">{message.sender_name}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <User className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-600">To:</span>
-                                    <span className="font-medium">{message.recipient_name}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Calendar className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-600">Date:</span>
-                                    <span className="font-medium">
-                                        {new Date(message.created_at).toLocaleString()}
-                                    </span>
-                                </div>
-                                {message.read_at && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <CheckCircle className="h-4 w-4 text-gray-400" />
-                                        <span className="text-gray-600">Read At:</span>
-                                        <span className="font-medium">
-                                            {new Date(message.read_at).toLocaleString()}
-                                        </span>
-                                    </div>
-                                )}
+                            <div>
+                                <p className="font-bold text-slate-900">From: {message.sender_name}</p>
+                                <p className="text-slate-500 text-[11px]">To: {message.receiver_name}</p>
                             </div>
                         </div>
 
-                        <div className="p-6">
-                            <div className="mb-6">
-                                <div className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 p-6 rounded-lg">
-                                    {message.message}
-                                </div>
-                            </div>
-
-                            {message.attachments && message.attachments.length > 0 && (
-                                <div className="border-t pt-6">
-                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                                        <Paperclip className="h-5 w-5" />
-                                        Attachments
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {message.attachments.map((attachment: any, index: number) => (
-                                            <a
-                                                key={index}
-                                                href={attachment.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 transition"
-                                            >
-                                                <Paperclip className="h-4 w-4 text-gray-400" />
-                                                <span className="text-sm font-medium">{attachment.name}</span>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
+                        <div className="text-left sm:text-right text-[11px] text-slate-400">
+                            <p className="flex items-center gap-1 font-mono sm:justify-end">
+                                <Clock className="w-3.5 h-3.5" />
+                                {message.created_at}
+                            </p>
+                            {message.read_at && (
+                                <p className="text-emerald-600 font-medium mt-0.5">
+                                    Seen / Read: {message.read_at}
+                                </p>
                             )}
                         </div>
                     </div>
+
+                    {/* 2. Message Body */}
+                    <article className="bg-white rounded-xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-4">
+                        <div className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap py-2">
+                            {message.message}
+                        </div>
+
+                        {/* Attachments Section */}
+                        {message.attachments && message.attachments.length > 0 && (
+                            <div className="pt-4 border-t border-slate-100 space-y-2">
+                                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Paperclip className="w-3.5 h-3.5 text-indigo-600" />
+                                    Attached Documents ({message.attachments.length})
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {message.attachments.map((file, index) => (
+                                        <a
+                                            key={index}
+                                            href={fileHref(file)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50/50 hover:border-indigo-200 text-xs font-medium text-slate-800 flex items-center justify-between gap-2 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                                                <span className="truncate group-hover:text-indigo-700">{fileName(file)}</span>
+                                            </div>
+                                            <Download className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 shrink-0" />
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </article>
+
+                    {/* 3. Reply / Followup Shortcut */}
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600">
+                        <span>Need to write a response or send additional queries?</span>
+                        <Link
+                            href={route('parent.messages.index')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-2xs"
+                        >
+                            <Send className="w-3.5 h-3.5" />
+                            Compose Reply
+                        </Link>
+                    </div>
                 </div>
-            </div>
+            </ParentPage>
         </AuthenticatedLayout>
     );
 }

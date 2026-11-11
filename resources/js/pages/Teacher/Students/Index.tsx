@@ -1,7 +1,8 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { Users, Search, Eye } from 'lucide-react';
+import { Users, GraduationCap, ArrowRight, UserCheck } from 'lucide-react';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Section {
     id: number;
@@ -14,58 +15,78 @@ interface Props {
     sections: Section[];
 }
 
-export default function Index({ sections }: Props) {
+export default function Index({ sections = [] }: Props) {
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    My Students
-                </h2>
-            }
-        >
-            <Head title="My Students" />
+        <AuthenticatedLayout>
+            <Head title="Class Roster - My Students" />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                        <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Classes & Students</h3>
-                            <p className="text-sm text-gray-600 mt-1">Select a class to view students</p>
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Assigned Classroom Sections"
+                    subtitle="Select a classroom section to inspect student profiles, academic progress, and guardian contacts"
+                    backUrl="/teacher/dashboard"
+                    badges={[
+                        { label: `${sections.length} Sections Allocated`, variant: 'neutral' }
+                    ]}
+                />
+
+                {/* 2. SECTION GRID */}
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                    <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-indigo-600" />
+                            <h3 className="text-sm font-semibold text-slate-900">Assigned Classes & Rosters</h3>
                         </div>
-                        <div className="p-6">
-                            {sections.length > 0 ? (
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    {sections.map((section) => (
-                                        <div
-                                            key={section.id}
-                                            className="p-5 border border-gray-200 rounded-lg hover:shadow-lg hover:border-blue-300 transition-all duration-300 bg-gradient-to-br from-white to-blue-50"
-                                        >
-                                            <div className="mb-4">
-                                                <h3 className="font-semibold text-lg text-gray-900">
-                                                    Class {section.class_name} - {section.name}
-                                                </h3>
-                                                <p className="text-sm text-gray-600 flex items-center mt-2">
-                                                    <Users className="mr-1 h-4 w-4 text-blue-600" />
-                                                    {section.student_count} students
-                                                </p>
+                        <span className="text-xs font-semibold text-slate-500">
+                            {sections.length} Classes
+                        </span>
+                    </div>
+
+                    <div className="p-4 sm:p-5">
+                        {sections.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                                {sections.map((section) => (
+                                    <div
+                                        key={section.id}
+                                        className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs hover:border-slate-300 transition-colors flex flex-col justify-between group"
+                                    >
+                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div>
+                                                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
+                                                    Class {section.class_name}
+                                                </span>
+                                                <h4 className="text-base font-bold text-slate-900 mt-0.5">
+                                                    Section {section.name}
+                                                </h4>
                                             </div>
+                                            <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                                <GraduationCap className="w-4 h-4" />
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                {section.student_count} Enrolled
+                                            </span>
+
                                             <Link
                                                 href={`/teacher/students/list?section_id=${section.id}`}
-                                                className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-2xs"
                                             >
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                View Students
+                                                Student Roster <ArrowRight className="w-3.5 h-3.5" />
                                             </Link>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <Users className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">No classes assigned</p>
-                                </div>
-                            )}
-                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                                <p className="text-xs font-medium text-slate-600">No classes assigned to you</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

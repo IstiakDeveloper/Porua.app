@@ -2,14 +2,32 @@ import React, { useState } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Button from '@/Components/Button';
-import Input from '@/Components/Input';
-import { ArrowLeft, Plus, Edit, Trash2, Users, User, Mail, Phone } from 'lucide-react';
+import Badge from '@/Components/Badge';
+import DeleteModal from '@/Components/DeleteModal';
+import IndexPagination from '@/Components/IndexPagination';
+import {
+    ArrowLeft,
+    Plus,
+    Edit,
+    Trash2,
+    Users,
+    User,
+    Mail,
+    Phone,
+    Sparkles,
+    Search,
+    Filter,
+    ShieldCheck
+} from 'lucide-react';
+import QuickAssignModal from './QuickAssignModal';
+import BulkGenerateModal from './BulkGenerateModal';
 
 interface User {
     id: number;
     name: string;
     email: string;
     phone: string | null;
+    username?: string | null;
 }
 
 interface Student {
@@ -17,6 +35,9 @@ interface Student {
     admission_number: string;
     first_name: string;
     last_name: string;
+    roll_number?: string;
+    school_class?: { name: string };
+    section?: { name: string };
     user?: {
         name: string;
     };
@@ -39,6 +60,12 @@ interface PaginationLink {
     active: boolean;
 }
 
+interface SchoolClass {
+    id: number;
+    name: string;
+    sections?: Array<{ id: number; name: string }>;
+}
+
 interface IndexProps {
     parents: {
         data: Parent[];
@@ -46,25 +73,47 @@ interface IndexProps {
         last_page: number;
         per_page: number;
         total: number;
-        from: number;
-        to: number;
+        from?: number;
+        to?: number;
         links: PaginationLink[];
     };
     students: Student[];
+    classes?: SchoolClass[];
     filters?: {
         search?: string;
     };
 }
 
-export default function Index({ parents, students, filters }: IndexProps) {
+export default function Index({ parents, students, classes = [], filters }: IndexProps) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
+    const [showQuickAssign, setShowQuickAssign] = useState(false);
+    const [showBulkGenerate, setShowBulkGenerate] = useState(false);
 
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        id: number | null;
+        name: string;
+    }>({ isOpen: false, id: null, name: '' });
+    const [isDeleting, setIsDeleting] = useState(false);
 
+    const handleDeleteClick = (parent: Parent) => {
+        setDeleteModal({
+            isOpen: true,
+            id: parent.id,
+            name: parent.user?.name || parent.father_name || 'this parent',
+        });
+    };
 
-    const handleDelete = (parent: Parent) => {
-        if (confirm(`Are you sure you want to remove ${parent.user?.name || 'this parent'}?`)) {
-            router.delete(`/student-parents/${parent.id}`);
-        }
+    const handleDeleteConfirm = () => {
+        if (!deleteModal.id) return;
+        setIsDeleting(true);
+        router.delete(`/student-parents/${deleteModal.id}`, {
+            onFinish: () => {
+                setIsDeleting(false);
+                setDeleteModal({ isOpen: false, id: null, name: '' });
+            },
+        });
     };
 
     const handleSearch = () => {
@@ -76,231 +125,359 @@ export default function Index({ parents, students, filters }: IndexProps) {
         router.get('/student-parents');
     };
 
+    const data = parents.data;
+
     return (
         <AuthenticatedLayout>
             <Head title="Parent Management" />
 
-            <div className="space-y-6 animate-fade-in">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" icon={<ArrowLeft className="w-5 h-5" />} onClick={() => router.visit('/students')}>
-                            Back
-                        </Button>
+            <div className="space-y-4">
+                {/* Page Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <Link href="/students">
+                            <button
+                                type="button"
+                                className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shadow-2xs"
+                                title="Back to Students"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                            </button>
+                        </Link>
                         <div>
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                                Parent Management
-                            </h1>
-                            <p className="text-gray-600 mt-1">Manage student parents and guardians</p>
+                            <h1 className="text-xl font-semibold text-slate-900">Parent Management</h1>
+                            <p className="text-xs text-slate-500 mt-0.5">Manage parents, login credentials & linked children</p>
                         </div>
                     </div>
-                    <Link href="/student-parents/create">
-                        <Button icon={<Plus className="w-5 h-5" />}>
-                            Add Parent
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            size="sm"
+                            onClick={() => setShowQuickAssign(true)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs"
+                            icon={<Sparkles className="w-3.5 h-3.5" />}
+                        >
+                            Quick Assign
                         </Button>
-                    </Link>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-blue-100 rounded-lg">
-                                <Users className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Total Parents</p>
-                                <p className="text-2xl font-bold text-gray-900">{parents.total}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-green-100 rounded-lg">
-                                <Users className="w-6 h-6 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Total Students</p>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {parents.data.reduce((sum, p) => sum + p.students.length, 0)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-purple-100 rounded-lg">
-                                <User className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Active Accounts</p>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {parents.data.filter(p => p.user !== null).length}
-                                </p>
-                            </div>
-                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowBulkGenerate(true)}
+                            icon={<Users className="w-3.5 h-3.5 text-slate-600" />}
+                        >
+                            Bulk Generate
+                        </Button>
+                        <Link href="/student-parents/create">
+                            <Button size="sm" variant="secondary" icon={<Plus className="w-3.5 h-3.5" />}>
+                                Add Parent
+                            </Button>
+                        </Link>
                     </div>
                 </div>
 
-                {/* Search and Filters */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                            <Input
-                                placeholder="Search by name, email..."
+                {/* Compact Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-medium text-slate-500">Total Parents</p>
+                            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">{parents.total}</p>
+                        </div>
+                        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100/60">
+                            <Users className="w-4 h-4" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-medium text-slate-500">Linked Students</p>
+                            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+                                {data.reduce((sum, p) => sum + (p.students?.length || 0), 0)}
+                            </p>
+                        </div>
+                        <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100/60">
+                            <Users className="w-4 h-4" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-medium text-slate-500">Active Accounts</p>
+                            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+                                {data.filter(p => p.user !== null).length}
+                            </p>
+                        </div>
+                        <div className="p-2.5 bg-purple-50 text-purple-600 rounded-lg border border-purple-100/60">
+                            <ShieldCheck className="w-4 h-4" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Search & Filter Bar */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-3 sm:p-3.5 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                        <div className="flex-1 min-w-[200px] relative">
+                            <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Search by name, username, phone or email..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                className="w-full text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
                             />
                         </div>
-                        <Button onClick={handleSearch}>Search</Button>
-                        {searchTerm && (
-                            <Button variant="ghost" onClick={handleReset}>Reset</Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant="secondary" onClick={handleSearch} icon={<Filter className="w-3.5 h-3.5" />}>
+                                Search
+                            </Button>
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-800"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Parent List */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Name</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added On</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {parents.data.map((parent) => (
-                                    <tr key={parent.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold">
-                                                    {parent.user?.name?.charAt(0).toUpperCase() || 'P'}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900">{parent.user?.name || 'N/A'}</p>
-                                                    <div className="text-xs text-gray-500 space-y-0.5">
-                                                        {parent.father_name && <div>F: {parent.father_name}</div>}
-                                                        {parent.mother_name && <div>M: {parent.mother_name}</div>}
-                                                        {parent.guardian_name && <div>G: {parent.guardian_name}</div>}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1">
-                                                {parent.user?.email && (
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <Mail className="w-4 h-4" />
-                                                        {parent.user.email}
-                                                    </div>
-                                                )}
-                                                {parent.user?.phone && (
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <Phone className="w-4 h-4" />
-                                                        {parent.user.phone}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {parent.students && parent.students.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {parent.students.map((student) => (
-                                                        <div key={student.id} className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-400 flex items-center justify-center text-white text-xs font-semibold">
-                                                                {student.first_name.charAt(0)}{student.last_name.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-medium text-gray-900">
-                                                                    {student.first_name} {student.last_name}
-                                                                </p>
-                                                                <p className="text-xs text-gray-500">{student.admission_number}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-gray-500 italic">No students linked</span>
+                {/* Mobile Cards Feed (< 768px) */}
+                <div className="block md:hidden space-y-3">
+                    {data.length > 0 ? (
+                        data.map((parent) => (
+                            <div key={parent.id} className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs space-y-2.5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="h-9 w-9 rounded-full bg-indigo-50 border border-indigo-100/60 flex items-center justify-center text-xs font-semibold text-indigo-700 shrink-0">
+                                            {parent.user?.name?.charAt(0)?.toUpperCase() || 'P'}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-xs text-slate-900 truncate">
+                                                {parent.user?.name || parent.father_name || parent.mother_name || 'N/A'}
+                                            </p>
+                                            {parent.user?.username && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded mt-0.5">
+                                                    @{parent.user.username}
+                                                </span>
                                             )}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            {new Date(parent.created_at).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Link href={`/student-parents/${parent.id}/edit`}>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        icon={<Edit className="w-4 h-4" />}
-                                                    />
-                                                </Link>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDelete(parent)}
-                                                    icon={<Trash2 className="w-4 h-4 text-red-600" />}
-                                                />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Link
+                                            href={`/student-parents/${parent.id}/edit`}
+                                            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
+                                        >
+                                            <Edit className="w-3.5 h-3.5" />
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteClick(parent)}
+                                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
 
-                    {parents.data.length === 0 && (
-                        <div className="text-center py-12">
-                            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Parents Found</h3>
-                            <p className="text-gray-600 mb-4">Start by adding parent/guardian information.</p>
-                            <Link href="/student-parents/create">
-                                <Button icon={<Plus className="w-5 h-5" />}>
-                                    Add First Parent
-                                </Button>
-                            </Link>
+                                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-2 border-t border-slate-100">
+                                    {parent.user?.phone && (
+                                        <div className="flex items-center gap-1 truncate">
+                                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                            <span>{parent.user.phone}</span>
+                                        </div>
+                                    )}
+                                    {parent.user?.email && (
+                                        <div className="flex items-center gap-1 truncate">
+                                            <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                                            <span className="truncate">{parent.user.email}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {parent.students && parent.students.length > 0 && (
+                                    <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5 items-center">
+                                        <span className="text-[10px] text-slate-400">Children:</span>
+                                        {parent.students.map((student) => (
+                                            <span
+                                                key={student.id}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-50 border border-slate-200/60 rounded text-[10px] text-slate-700 font-medium"
+                                            >
+                                                {student.first_name} {student.last_name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-xs text-slate-500">
+                            No parents found.
                         </div>
                     )}
                 </div>
 
-                {/* Pagination */}
-                {parents.last_page > 1 && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">{parents.from}</span> to{' '}
-                                <span className="font-medium">{parents.to}</span> of{' '}
-                                <span className="font-medium">{parents.total}</span> results
-                            </div>
-                            <div className="flex gap-2">
-                                {parents.links.map((link, index) => (
-                                    <Link
-                                        key={index}
-                                        href={link.url || '#'}
-                                        className={`px-3 py-2 text-sm rounded-lg ${
-                                            link.active
-                                                ? 'bg-blue-600 text-white'
-                                                : link.url
-                                                ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                {/* Desktop Table (>= 768px) */}
+                <div className="hidden md:block bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-slate-50/80 border-b border-slate-200/80">
+                                <tr>
+                                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Parent Details</th>
+                                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Login / Contact</th>
+                                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Linked Children</th>
+                                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Created</th>
+                                    <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider w-20"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {data.length > 0 ? (
+                                    data.map((parent) => (
+                                        <tr key={parent.id} className="hover:bg-slate-50/70 transition-colors">
+                                            {/* Parent Column */}
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-700 font-semibold text-xs shrink-0">
+                                                        {parent.user?.name?.charAt(0)?.toUpperCase() || 'P'}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-semibold text-slate-900 truncate">
+                                                            {parent.user?.name || 'N/A'}
+                                                        </p>
+                                                        <div className="text-[11px] text-slate-400 space-x-2">
+                                                            {parent.father_name && <span>F: {parent.father_name}</span>}
+                                                            {parent.mother_name && <span>M: {parent.mother_name}</span>}
+                                                            {parent.guardian_name && <span>G: {parent.guardian_name}</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Login & Contact Column */}
+                                            <td className="px-4 py-3">
+                                                <div className="space-y-1">
+                                                    {parent.user?.username ? (
+                                                        <div className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded">
+                                                            <User className="w-3 h-3 text-indigo-500" />
+                                                            {parent.user.username}
+                                                        </div>
+                                                    ) : null}
+                                                    {parent.user?.phone && (
+                                                        <div className="flex items-center gap-1.5 text-xs text-slate-600 font-mono">
+                                                            <Phone className="w-3 h-3 text-slate-400" />
+                                                            {parent.user.phone}
+                                                        </div>
+                                                    )}
+                                                    {parent.user?.email && (
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                                                            <Mail className="w-3 h-3 text-slate-300" />
+                                                            {parent.user.email}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Linked Students Column */}
+                                            <td className="px-4 py-3">
+                                                {parent.students && parent.students.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {parent.students.map((student) => (
+                                                            <div
+                                                                key={student.id}
+                                                                className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 border border-slate-200/80 rounded-md text-[11px] text-slate-700"
+                                                            >
+                                                                <span className="font-medium">
+                                                                    {student.first_name} {student.last_name}
+                                                                </span>
+                                                                {student.admission_number && (
+                                                                    <span className="font-mono text-[10px] text-slate-400">
+                                                                        ({student.admission_number})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">No students linked</span>
+                                                )}
+                                            </td>
+
+                                            {/* Created At */}
+                                            <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                                                {new Date(parent.created_at).toLocaleDateString()}
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Link
+                                                        href={`/student-parents/${parent.id}/edit`}
+                                                        className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                                        title="Edit Parent"
+                                                    >
+                                                        <Edit className="w-3.5 h-3.5" />
+                                                    </Link>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteClick(parent)}
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                                        title="Remove Parent"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-12 text-center text-xs text-slate-500">
+                                            <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                            <p className="font-medium text-slate-700">No Parents Found</p>
+                                            <p className="text-slate-400 mt-0.5">Use "Quick Assign" to create credentials from student records.</p>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                )}
+
+                    {/* Standard Index Pagination */}
+                    <IndexPagination
+                        links={parents.links}
+                        from={parents.from}
+                        to={parents.to}
+                        total={parents.total}
+                        lastPage={parents.last_page}
+                    />
+                </div>
             </div>
 
+            {/* Modals */}
+            <QuickAssignModal
+                show={showQuickAssign}
+                onClose={() => setShowQuickAssign(false)}
+                classes={classes}
+                onSuccess={() => router.reload({ only: ['parents'] })}
+            />
 
+            <BulkGenerateModal
+                show={showBulkGenerate}
+                onClose={() => setShowBulkGenerate(false)}
+                classes={classes}
+                onSuccess={() => router.reload({ only: ['parents'] })}
+            />
+
+            <DeleteModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, id: null, name: '' })}
+                onConfirm={handleDeleteConfirm}
+                title="Remove Parent Account"
+                message="Are you sure you want to remove this parent account? Students linked to this parent will become unlinked."
+                itemName={deleteModal.name}
+                isDeleting={isDeleting}
+            />
         </AuthenticatedLayout>
     );
 }

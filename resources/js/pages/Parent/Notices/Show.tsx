@@ -1,13 +1,18 @@
+import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { ArrowLeft, Bell, Calendar, Eye, Paperclip, Pin } from 'lucide-react';
-
-function route(name: string, params?: any): string {
-    const routes: Record<string, string> = {
-        'parent.notices.index': '/parent/notices',
-    };
-    return routes[name] || '/';
-}
+import ParentPage from '@/Components/Parent/ParentPage';
+import { route } from '@/Components/Parent/route';
+import {
+    ArrowLeft,
+    Paperclip,
+    Calendar,
+    Pin,
+    Megaphone,
+    FileText,
+    Download,
+    Building2
+} from 'lucide-react';
 
 interface Notice {
     id: number;
@@ -16,154 +21,112 @@ interface Notice {
     type: string;
     priority: string;
     publish_date: string;
-    attachments: any;
+    attachments: Array<string | { url?: string; name?: string }>;
     is_pinned: boolean;
-    view_count: number;
-    created_at: string;
 }
 
-interface Props {
-    notice: Notice;
+function fileHref(file: string | { url?: string; name?: string }): string {
+    if (typeof file !== 'string') {
+        return file.url || '#';
+    }
+    if (file.startsWith('http') || file.startsWith('/')) {
+        return file;
+    }
+    return `/storage/${file}`;
 }
 
-export default function Show({ notice }: Props) {
-    const getPriorityColor = (priority: string) => {
-        switch (priority) {
-            case 'urgent':
-                return 'bg-red-100 text-red-800';
-            case 'high':
-                return 'bg-orange-100 text-orange-800';
-            case 'medium':
-                return 'bg-blue-100 text-blue-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
-        }
-    };
+function fileName(file: string | { url?: string; name?: string }): string {
+    if (typeof file !== 'string') {
+        return file.name || 'Notice Attachment';
+    }
+    return file.split('/').pop() || 'Notice Attachment';
+}
 
-    const getTypeColor = (type: string) => {
-        switch (type) {
-            case 'exam':
-                return 'bg-purple-100 text-purple-800';
-            case 'holiday':
-                return 'bg-green-100 text-green-800';
-            case 'event':
-                return 'bg-yellow-100 text-yellow-800';
-            case 'general':
-                return 'bg-blue-100 text-blue-800';
-            case 'fee':
-                return 'bg-pink-100 text-pink-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
-        }
-    };
-
+export default function Show({ notice }: { notice: Notice }) {
     return (
         <AuthenticatedLayout>
-            <Head title={notice.title} />
+            <Head title={`Notice - ${notice.title}`} />
 
-            <div className="py-6">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <Link href={route('parent.notices.index')}>
-                            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Notices
-                            </button>
-                        </Link>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-start gap-3 flex-1">
-                                    <Bell className="h-6 w-6 text-indigo-600 mt-1" />
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            {notice.is_pinned && (
-                                                <Pin className="h-5 w-5 text-blue-600" />
-                                            )}
-                                            <h1 className="text-2xl font-bold text-gray-900">{notice.title}</h1>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className={`px-3 py-1 text-xs font-semibold rounded-full uppercase ${getTypeColor(notice.type)}`}>
-                                                {notice.type}
-                                            </span>
-                                            <span className={`px-3 py-1 text-xs font-semibold rounded-full uppercase ${getPriorityColor(notice.priority)}`}>
-                                                {notice.priority}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t">
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Calendar className="h-4 w-4" />
-                                    <div>
-                                        <p className="text-xs">Published Date</p>
-                                        <p className="font-medium">
-                                            {new Date(notice.publish_date).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Eye className="h-4 w-4" />
-                                    <div>
-                                        <p className="text-xs">Views</p>
-                                        <p className="font-medium">{notice.view_count}</p>
-                                    </div>
-                                </div>
-                                {notice.attachments && notice.attachments.length > 0 && (
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Paperclip className="h-4 w-4" />
-                                        <div>
-                                            <p className="text-xs">Attachments</p>
-                                            <p className="font-medium">{notice.attachments.length} file(s)</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="p-6">
-                            <div className="mb-6">
-                                <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                    {notice.description}
-                                </div>
-                            </div>
-
-                            {notice.attachments && notice.attachments.length > 0 && (
-                                <div className="border-t pt-6">
-                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                                        <Paperclip className="h-5 w-5" />
-                                        Attachments
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {notice.attachments.map((attachment: any, index: number) => (
-                                            <a
-                                                key={index}
-                                                href={attachment.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 transition"
-                                            >
-                                                <Paperclip className="h-4 w-4 text-gray-400" />
-                                                <span className="text-sm font-medium">{attachment.name}</span>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
+            <ParentPage
+                title={notice.title}
+                subtitle={`Published on ${notice.publish_date} • Category: ${notice.type} • Priority: ${notice.priority}`}
+                action={
+                    <Link
+                        href={route('parent.notices.index')}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        Back to Notices
+                    </Link>
+                }
+            >
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {/* Notice Main Content Article */}
+                    <article className="bg-white rounded-xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-4">
+                        <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-100">
+                            {notice.is_pinned && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <Pin className="w-3.5 h-3.5" />
+                                    Pinned Circular
+                                </span>
                             )}
-
-                            <div className="border-t pt-6 mt-6">
-                                <p className="text-xs text-gray-500">
-                                    Posted on {new Date(notice.created_at).toLocaleString()}
-                                </p>
-                            </div>
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 capitalize">
+                                {notice.type}
+                            </span>
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 capitalize">
+                                Priority: {notice.priority}
+                            </span>
+                            <span className="text-xs text-slate-400 ml-auto flex items-center gap-1 font-mono">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {notice.publish_date}
+                            </span>
                         </div>
+
+                        {/* Notice Body */}
+                        <div className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap py-2">
+                            {notice.description}
+                        </div>
+
+                        {/* Attachments Section */}
+                        {notice.attachments && notice.attachments.length > 0 && (
+                            <div className="pt-4 border-t border-slate-100 space-y-2">
+                                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Paperclip className="w-3.5 h-3.5 text-indigo-600" />
+                                    Attached Documents ({notice.attachments.length})
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {notice.attachments.map((file, index) => (
+                                        <a
+                                            key={index}
+                                            href={fileHref(file)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50/50 hover:border-indigo-200 text-xs font-medium text-slate-800 flex items-center justify-between gap-2 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                                                <span className="truncate group-hover:text-indigo-700">{fileName(file)}</span>
+                                            </div>
+                                            <Download className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 shrink-0" />
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </article>
+
+                    {/* Official Authority Card */}
+                    <div className="bg-slate-50 rounded-xl border border-slate-200/70 p-4 text-xs space-y-1 text-slate-600">
+                        <div className="flex items-center gap-2 font-bold text-slate-800">
+                            <Building2 className="w-4 h-4 text-indigo-600" />
+                            Official Institutional Broadcast
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                            This notice was published by the school administration for authorized guardians. For inquiries related to this circular, please message the administration via the portal.
+                        </p>
                     </div>
                 </div>
-            </div>
+            </ParentPage>
         </AuthenticatedLayout>
     );
 }

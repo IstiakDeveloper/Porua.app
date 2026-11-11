@@ -18,6 +18,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'phone',
@@ -43,6 +44,16 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        static::creating(function (User $user) {
+            if (empty($user->username)) {
+                $user->username = static::generateUniqueUsername(
+                    $user->name,
+                    $user->email,
+                    $user->phone
+                );
+            }
+        });
+
         static::updating(function (User $user) {
             if ($user->isDirty('password')) {
                 // Invalidate remember_token so "Remember Me" cookies cannot auto-login
@@ -56,7 +67,7 @@ class User extends Authenticatable
                 try {
                     DB::table('sessions')->where('user_id', $user->id)->delete();
                 } catch (\Throwable $e) {
-                    Log::warning("Failed to clear sessions for user {$user->id}: " . $e->getMessage());
+                    Log::warning("Failed to clear sessions for user {$user->id}: ".$e->getMessage());
                 }
             }
         });
@@ -70,12 +81,62 @@ class User extends Authenticatable
         try {
             DB::table('sessions')->where('user_id', $this->id)->delete();
         } catch (\Throwable $e) {
-            Log::warning("Failed to clear sessions for user {$this->id}: " . $e->getMessage());
+            Log::warning("Failed to clear sessions for user {$this->id}: ".$e->getMessage());
         }
 
         $this->forceFill([
             'remember_token' => Str::random(60),
         ])->saveQuietly();
+    }
+
+    /**
+     * Generate a clean, unique username from user attributes.
+     */
+    public static function generateUniqueUsername(?string $name, ?string $email = null, ?string $phone = null, ?int $ignoreUserId = null): string
+    {
+        $candidate = null;
+
+        // 1. If clean phone number is provided (e.g. 01xxxxxxxxx)
+        if (! empty($phone)) {
+            $digits = preg_replace('/[^0-9]/', '', $phone);
+            if (strlen($digits) >= 10 && strlen($digits) <= 15) {
+                $candidate = $digits;
+            }
+        }
+
+        // 2. If email is provided, use email prefix
+        if (empty($candidate) && ! empty($email)) {
+            $prefix = explode('@', $email)[0];
+            $cleanPrefix = strtolower(preg_replace('/[^a-zA-Z0-9_.-]/', '', $prefix));
+            if (strlen($cleanPrefix) >= 3) {
+                $candidate = $cleanPrefix;
+            }
+        }
+
+        // 3. Fallback to name
+        if (empty($candidate) && ! empty($name)) {
+            $cleanName = strtolower(preg_replace('/[^a-zA-Z0-9_]/', '', str_replace([' ', '-', '.'], '_', trim($name))));
+            $cleanName = trim(preg_replace('/_+/', '_', $cleanName), '_');
+            if (strlen($cleanName) >= 3) {
+                $candidate = substr($cleanName, 0, 30);
+            }
+        }
+
+        // 4. Default fallback
+        if (empty($candidate)) {
+            $candidate = 'user_'.Str::lower(Str::random(6));
+        }
+
+        // Guarantee uniqueness against DB
+        $base = $candidate;
+        $counter = 1;
+        while (static::where('username', $candidate)
+            ->when($ignoreUserId, fn ($q) => $q->where('id', '!=', $ignoreUserId))
+            ->exists()) {
+            $candidate = substr($base, 0, 40).'_'.$counter++;
+        }
+
+        return $candidate;
     }
 
     // Relationships

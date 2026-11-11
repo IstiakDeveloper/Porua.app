@@ -15,8 +15,9 @@ import {
     Calendar,
     FileText,
     HeartPulse,
-    Coffee
+    Coffee,
 } from 'lucide-react';
+import { formatBdDate, formatBdDateRange, formatDays, formatDaysCount } from '@/utils/datetime';
 
 interface LeaveBalance {
     leave_type_id: number;
@@ -159,16 +160,16 @@ export default function Index({
                                 </div>
                                 <div className="mt-3 flex items-baseline gap-1">
                                     <span className="text-2xl font-black text-slate-900">
-                                        {b.days_remaining !== null ? b.days_remaining : '—'}
+                                        {b.days_remaining !== null ? formatDaysCount(b.days_remaining) : '—'}
                                     </span>
                                     {b.days_allowed > 0 && (
                                         <span className="text-xs text-slate-400 font-medium">
-                                            / {b.days_allowed} days left
+                                            / {formatDaysCount(b.days_allowed)} days left
                                         </span>
                                     )}
                                 </div>
                                 <p className="mt-1 text-[11px] text-slate-500">
-                                    Used: <strong>{b.days_used}</strong> {b.days_used === 1 ? 'day' : 'days'}
+                                    Used: <strong>{formatDaysCount(b.days_used)}</strong> {Number(b.days_used) === 1 ? 'day' : 'days'}
                                 </p>
                             </div>
                         ))}
@@ -212,12 +213,12 @@ export default function Index({
                                         </td>
                                         <td className="py-3 px-4">
                                             <span className="text-xs font-bold text-slate-800">
-                                                {app.start_date === app.end_date ? app.start_date : `${app.start_date} to ${app.end_date}`}
+                                                {formatBdDateRange(app.start_date, app.end_date)}
                                             </span>
                                         </td>
                                         <td className="py-3 px-4 text-center">
                                             <span className="text-xs font-black text-slate-900">
-                                                {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
+                                                {formatDays(app.total_days)}
                                             </span>
                                             {app.is_half_day && (
                                                 <span className="block text-[10px] text-indigo-600">
@@ -322,7 +323,7 @@ export default function Index({
                             >
                                 {leaveTypes.map((t) => (
                                     <option key={t.id} value={t.id}>
-                                        {t.name} ({t.code}) - {t.days_per_year > 0 ? `${t.days_per_year} days/yr` : 'Flexible'}
+                                        {t.name} ({t.code}) - {t.days_per_year > 0 ? `${formatDaysCount(t.days_per_year)} days/yr` : 'Flexible'}
                                     </option>
                                 ))}
                             </select>

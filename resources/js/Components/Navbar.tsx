@@ -9,22 +9,41 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen = false }: NavbarProps = {}) {
-    const { auth } = usePage().props as { auth: { user: { id: number; name: string; email: string; roles?: Array<{ name: string }> } } };
+    const { auth } = usePage().props as { auth: { user: { id: number; name: string; email: string; user_type?: string; roles?: Array<{ name: string }> } } };
+    const roleNames = auth?.user?.roles?.map((role) => role.name) ?? [];
+    const isParent = roleNames.includes('Parent');
+    const canCollectFee = roleNames.some((role) => ['Super Admin', 'Admin', 'Principal'].includes(role));
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const terminology = useTerminology();
 
-    const badgeStyle = {
-        school: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-        coaching: 'bg-indigo-50 text-indigo-800 border-indigo-200',
-        hybrid: 'bg-purple-50 text-purple-800 border-purple-200',
-    }[terminology.instituteType] || 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    const primaryRole = roleNames.length > 0
+        ? roleNames.join(', ')
+        : (auth?.user?.user_type ? auth.user.user_type.charAt(0).toUpperCase() + auth.user.user_type.slice(1) : 'User');
 
-    const dotColor = {
-        school: 'bg-emerald-500',
-        coaching: 'bg-indigo-500',
-        hybrid: 'bg-purple-500',
-    }[terminology.instituteType] || 'bg-emerald-500';
+    const getRoleBadgeStyle = (roles: string[]) => {
+        if (roles.includes('Super Admin')) {
+            return { badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', dot: 'bg-emerald-600' };
+        }
+        if (roles.includes('Admin') || roles.includes('Principal')) {
+            return { badge: 'bg-teal-50 text-teal-800 border-teal-200', dot: 'bg-teal-600' };
+        }
+        if (roles.includes('Teacher')) {
+            return { badge: 'bg-sky-50 text-sky-800 border-sky-200', dot: 'bg-sky-500' };
+        }
+        if (roles.includes('Accountant')) {
+            return { badge: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500' };
+        }
+        if (roles.includes('Parent')) {
+            return { badge: 'bg-purple-50 text-purple-800 border-purple-200', dot: 'bg-purple-500' };
+        }
+        if (roles.includes('Student')) {
+            return { badge: 'bg-indigo-50 text-indigo-800 border-indigo-200', dot: 'bg-indigo-500' };
+        }
+        return { badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500' };
+    };
+
+    const roleStyle = getRoleBadgeStyle(roleNames);
 
     const handleLogout = () => {
         router.post('/logout');
@@ -59,23 +78,34 @@ export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen = false }:
                         </p>
                     </div>
 
-                    <div className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border shadow-2xs ${badgeStyle}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                        <span>{terminology.modeBadgeTitle}</span>
+                    <div className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border shadow-2xs ${roleStyle.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${roleStyle.dot}`} />
+                        <span>{primaryRole}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Link
-                        href="/fee-collections/create"
-                        className="px-2 sm:px-2.5 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
-                        title="Collect Fee (POS Desk)"
-                    >
-                        <Receipt className="w-3.5 h-3.5 shrink-0" />
-                        <span className="hidden sm:inline">Collect Fee</span>
-                    </Link>
+                    {canCollectFee && (
+                        <Link
+                            href="/fee-collections/create"
+                            className="px-2 sm:px-2.5 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
+                            title="Collect Fee (POS Desk)"
+                        >
+                            <Receipt className="w-3.5 h-3.5 shrink-0" />
+                            <span className="hidden sm:inline">Collect Fee</span>
+                        </Link>
+                    )}
 
                     <div className="relative">
+                        {isParent ? (
+                            <Link
+                                href="/parent/notices"
+                                className="p-2 rounded-lg text-gray-500 hover:bg-emerald-50 hover:text-emerald-700 transition-colors inline-flex"
+                                aria-label="Notices"
+                            >
+                                <Bell className="w-4 h-4" />
+                            </Link>
+                        ) : (
                         <button
                             type="button"
                             onClick={() => setShowNotifications(!showNotifications)}
@@ -84,6 +114,7 @@ export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen = false }:
                         >
                             <Bell className="w-4 h-4" />
                         </button>
+                        )}
                         {showNotifications && (
                             <div className="absolute right-0 mt-1 w-72 bg-white rounded-md border border-gray-200 shadow-lg py-1 z-50">
                                 <div className="px-3 py-2 border-b border-gray-100">
@@ -123,8 +154,13 @@ export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen = false }:
                                 />
                                 <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg border border-emerald-100 shadow-lg py-1 z-50">
                                     <div className="px-3 py-2 border-b border-emerald-50">
-                                        <p className="text-xs font-medium text-gray-900 truncate">{auth?.user?.name}</p>
-                                        <p className="text-[11px] text-emerald-700/80 truncate">{auth?.user?.email}</p>
+                                        <div className="flex items-center justify-between gap-1.5">
+                                            <p className="text-xs font-semibold text-gray-900 truncate">{auth?.user?.name}</p>
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${roleStyle.badge}`}>
+                                                {primaryRole}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-emerald-700/80 truncate mt-0.5">{auth?.user?.email}</p>
                                     </div>
                                     <Link
                                         href={

@@ -15,10 +15,10 @@ class LoginController extends Controller
         // Fresh install: setup not completed → redirect to wizard
         $isSetupCompleted = (bool) \App\Models\Setting::get('is_setup_completed', false)
             && \App\Models\User::active()
-                ->whereHas('roles', fn($q) => $q->whereIn('slug', ['super-admin', 'super_admin']))
+                ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['super-admin', 'super_admin']))
                 ->exists();
 
-        if (!$isSetupCompleted) {
+        if (! $isSetupCompleted) {
             return redirect()->route('onboarding.wizard');
         }
 
@@ -27,25 +27,49 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
+        $input = $request->input('login') ?? $request->input('email');
+
+        $request->validate([
+            'login' => 'nullable|string',
+            'email' => 'nullable|string',
+            'password' => 'required|string|min:4',
             'remember' => 'boolean',
         ]);
 
-        $remember = $credentials['remember'] ?? false;
-        unset($credentials['remember']);
-
-        if (! Auth::attempt($credentials, $remember)) {
+        if (empty($input)) {
             throw ValidationException::withMessages([
-                'email' => 'The provided credentials are incorrect.',
+                'login' => 'Please enter your username, mobile number, or email address.',
             ]);
         }
+
+        $input = trim((string) $input);
+        $password = (string) $request->input('password');
+        $remember = $request->boolean('remember');
+
+        // Find user by username, email, or phone
+        $user = \App\Models\User::where('username', $input)
+            ->orWhere('email', $input)
+            ->orWhere('phone', $input)
+            ->first();
+
+        if (! $user || ! \Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+            throw ValidationException::withMessages([
+                'login' => 'The provided credentials do not match our records.',
+            ]);
+        }
+
+        if ($user->status !== 'active') {
+            throw ValidationException::withMessages([
+                'login' => 'Your account is '.($user->status ?? 'inactive').'. Please contact school administration.',
+            ]);
+        }
+
+        Auth::login($user, $remember);
 
         $request->session()->regenerate();
 
         // Update last login
-        Auth::user()->update([
+        $user->update([
             'last_login_at' => now(),
             'last_login_ip' => $request->ip(),
         ]);
@@ -53,8 +77,6 @@ class LoginController extends Controller
         logActivity('login', 'User logged in successfully');
 
         // Redirect based on user role
-        $user = Auth::user();
-
         if ($user->hasRole('Student')) {
             return redirect()->intended(route('student.dashboard'));
         } elseif ($user->hasRole('Teacher')) {

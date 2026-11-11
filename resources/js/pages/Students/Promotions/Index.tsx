@@ -2,21 +2,22 @@ import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Button from '@/Components/Button';
+import FormPageHeader from '@/Components/FormPageHeader';
 import DeleteModal from '@/Components/DeleteModal';
-import { Plus, ArrowLeft, History, Trash2, Filter } from 'lucide-react';
-
-// Route helper function
-function route(name: string, params?: any): string {
-    const routes: Record<string, string> = {
-        'students.index': '/students',
-        'student-promotions.index': '/student-promotions',
-        'student-promotions.create': '/student-promotions/create',
-        'student-promotions.destroy': '/student-promotions',
-    };
-
-    const baseRoute = routes[name] || `/${name.replace('.', '/')}`;
-    return params ? `${baseRoute}/${params}` : baseRoute;
-}
+import IndexPagination from '@/Components/IndexPagination';
+import {
+    Plus,
+    History,
+    Trash2,
+    Filter,
+    GraduationCap,
+    ArrowRight,
+    Calendar,
+    Users,
+    CheckCircle2,
+    XCircle,
+    Award
+} from 'lucide-react';
 
 interface Student {
     id: number;
@@ -47,7 +48,7 @@ interface Promotion {
     from_academic_year: AcademicYear;
     to_academic_year: AcademicYear;
     from_class: SchoolClass;
-    to_class: SchoolClass;
+    to_class: SchoolClass | null;
     from_section: Section | null;
     to_section: Section | null;
     promotion_date: string;
@@ -72,9 +73,12 @@ interface IndexProps {
         links: PaginationLink[];
     };
     academicYears: AcademicYear[];
+    filters?: {
+        academic_year_id?: string;
+    };
 }
 
-export default function Index({ promotions, academicYears }: IndexProps) {
+export default function Index({ promotions, academicYears, filters = {} }: IndexProps) {
     const [deleteModal, setDeleteModal] = useState<{
         show: boolean;
         promotion: Promotion | null;
@@ -83,7 +87,7 @@ export default function Index({ promotions, academicYears }: IndexProps) {
         promotion: null,
     });
     const [isDeleting, setIsDeleting] = useState(false);
-    const [filterYear, setFilterYear] = useState('');
+    const [filterYear, setFilterYear] = useState(filters?.academic_year_id || '');
 
     const handleDeleteClick = (promotion: Promotion) => {
         setDeleteModal({ show: true, promotion });
@@ -92,7 +96,7 @@ export default function Index({ promotions, academicYears }: IndexProps) {
     const handleDeleteConfirm = () => {
         if (deleteModal.promotion) {
             setIsDeleting(true);
-            router.delete(route('student-promotions.destroy', deleteModal.promotion.id), {
+            router.delete(`/student-promotions/${deleteModal.promotion.id}`, {
                 onFinish: () => {
                     setIsDeleting(false);
                     setDeleteModal({ show: false, promotion: null });
@@ -101,248 +105,358 @@ export default function Index({ promotions, academicYears }: IndexProps) {
         }
     };
 
-    const handleDeleteCancel = () => {
-        setDeleteModal({ show: false, promotion: null });
-    };
-
     const handleFilter = () => {
-        router.get(route('student-promotions.index'),
-            { academic_year_id: filterYear },
+        router.get('/student-promotions',
+            { academic_year_id: filterYear || undefined },
             { preserveState: true, preserveScroll: true }
         );
     };
 
     const handleReset = () => {
         setFilterYear('');
-        router.get(route('student-promotions.index'));
+        router.get('/student-promotions');
+    };
+
+    const destinationClass = (promotion: Promotion) => {
+        if (!promotion.to_class) {
+            return 'Passed out';
+        }
+
+        return `${promotion.to_class.name}${promotion.to_section ? ` (${promotion.to_section.name})` : ''}`;
+    };
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'promoted':
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        Promoted
+                    </span>
+                );
+            case 'passed_out':
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                        <Award className="w-3 h-3 text-indigo-600" />
+                        Passed Out
+                    </span>
+                );
+            case 'detained':
+            default:
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+                        <XCircle className="w-3 h-3 text-amber-600" />
+                        {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Detained'}
+                    </span>
+                );
+        }
     };
 
     return (
         <AuthenticatedLayout>
             <Head title="Student Promotions" />
 
-            <div className="space-y-6 animate-fade-in">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href={route('students.index')}>
-                            <Button variant="ghost" size="sm" icon={<ArrowLeft className="w-4 h-4" />}>
-                                Back
+            <div className="space-y-4">
+                {/* Standard ERP Header */}
+                <FormPageHeader
+                    title="Student Promotions"
+                    subtitle="Manage annual batch promotions and class level progressions"
+                    backUrl="/students"
+                    backLabel="Students Directory"
+                    badge="Academic Progression"
+                    badgeIcon={GraduationCap}
+                    actions={
+                        <Link href="/student-promotions/create">
+                            <Button
+                                size="sm"
+                                icon={<Plus className="w-4 h-4" />}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                                Promote Students
                             </Button>
                         </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                                Student Promotions
-                            </h1>
-                            <p className="text-gray-600 mt-1">View and manage student promotion history</p>
-                        </div>
-                    </div>
-                    <Link href={route('student-promotions.create')}>
-                        <Button icon={<Plus className="w-5 h-5" />}>
-                            Promote Students
-                        </Button>
-                    </Link>
-                </div>
+                    }
+                />
 
-                {/* Filter Section */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Filter by Academic Year
-                            </label>
-                            <select
-                                value={filterYear}
-                                onChange={(e) => setFilterYear(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {/* Compact Filter Bar */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                        <div className="flex flex-1 items-center gap-2">
+                            <div className="relative flex-1 sm:max-w-xs">
+                                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 sm:hidden">
+                                    Filter by Academic Year
+                                </label>
+                                <select
+                                    value={filterYear}
+                                    onChange={(e) => setFilterYear(e.target.value)}
+                                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                >
+                                    <option value="">All Academic Years</option>
+                                    {academicYears.map(year => (
+                                        <option key={year.id} value={year.id}>{year.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={handleFilter}
+                                icon={<Filter className="w-3.5 h-3.5" />}
                             >
-                                <option value="">All Academic Years</option>
-                                {academicYears.map(year => (
-                                    <option key={year.id} value={year.id}>{year.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex items-end gap-2">
-                            <Button onClick={handleFilter} icon={<Filter className="w-4 h-4" />}>
-                                Apply Filter
+                                Filter
                             </Button>
                             {filterYear && (
-                                <Button variant="ghost" onClick={handleReset}>
+                                <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1.5 transition-colors"
+                                >
                                     Reset
-                                </Button>
+                                </button>
                             )}
+                        </div>
+
+                        <div className="text-xs text-slate-500 shrink-0 font-medium">
+                            Total Records: <span className="font-semibold text-slate-900">{promotions.total}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Promotions Table */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    {promotions.data.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Student
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            From
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            To
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Promotion Date
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Remarks
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {promotions.data.map((promotion) => (
-                                        <tr key={promotion.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    {promotion.student.photo_url ? (
-                                                        <img
-                                                            src={promotion.student.photo_url}
-                                                            alt={`${promotion.student.first_name} ${promotion.student.last_name}`}
-                                                            className="w-10 h-10 rounded-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center">
-                                                            <span className="text-white font-semibold">
-                                                                {promotion.student.first_name.charAt(0)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    <div>
-                                                        <div className="font-medium text-gray-900">
-                                                            {promotion.student.first_name} {promotion.student.last_name}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            {promotion.student.admission_number}
-                                                        </div>
-                                                    </div>
+                {/* Content Section */}
+                {promotions.data.length > 0 ? (
+                    <>
+                        {/* Mobile Cards Feed (< 768px) */}
+                        <div className="block md:hidden space-y-2.5">
+                            {promotions.data.map((promotion) => (
+                                <div key={promotion.id} className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            {promotion.student.photo_url ? (
+                                                <img
+                                                    src={promotion.student.photo_url}
+                                                    alt=""
+                                                    className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-100"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100/60 flex items-center justify-center font-bold text-indigo-700 text-xs shrink-0">
+                                                    {promotion.student.first_name.charAt(0)}
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm">
-                                                    <div className="font-medium text-gray-900">
-                                                        {promotion.from_academic_year.name}
-                                                    </div>
-                                                    <div className="text-gray-500">
-                                                        {promotion.from_class.name}
-                                                        {promotion.from_section && ` - ${promotion.from_section.name}`}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm">
-                                                    <div className="font-medium text-gray-900">
-                                                        {promotion.to_academic_year.name}
-                                                    </div>
-                                                    <div className="text-gray-500">
-                                                        {promotion.to_class.name}
-                                                        {promotion.to_section && ` - ${promotion.to_section.name}`}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {new Date(promotion.promotion_date).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                    promotion.status === 'promoted'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : promotion.status === 'passed_out'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                    {promotion.status === 'passed_out' ? 'Passed Out' : promotion.status.charAt(0).toUpperCase() + promotion.status.slice(1)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">
-                                                {promotion.remarks || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteClick(promotion)}
-                                                    className="text-red-600 hover:text-red-900"
-                                                    icon={<Trash2 className="w-4 h-4" />}
-                                                >
-                                                    Delete
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <History className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                No Promotion Records
-                            </h3>
-                            <p className="text-gray-600 mb-6">
-                                {filterYear ? 'No promotions found for the selected academic year.' : 'There are no student promotions yet.'}
-                            </p>
-                            <Link href={route('student-promotions.create')}>
-                                <Button icon={<Plus className="w-5 h-5" />}>
-                                    Create First Promotion
-                                </Button>
-                            </Link>
-                        </div>
-                    )}
-                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-semibold text-slate-900 truncate">
+                                                    {promotion.student.first_name} {promotion.student.last_name}
+                                                </p>
+                                                <p className="text-[11px] text-slate-400 font-mono">
+                                                    Adm: {promotion.student.admission_number}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="shrink-0">
+                                            {getStatusBadge(promotion.status)}
+                                        </div>
+                                    </div>
 
-                {/* Pagination */}
-                {promotions.last_page > 1 && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">{promotions.from}</span> to{' '}
-                                <span className="font-medium">{promotions.to}</span> of{' '}
-                                <span className="font-medium">{promotions.total}</span> results
-                            </div>
-                            <div className="flex gap-2">
-                                {promotions.links.map((link, index) => (
-                                    <Link
-                                        key={index}
-                                        href={link.url || '#'}
-                                        className={`px-3 py-2 text-sm rounded-lg ${
-                                            link.active
-                                                ? 'bg-blue-600 text-white'
-                                                : link.url
-                                                ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
+                                    {/* Transition Route Pill */}
+                                    <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100 flex items-center justify-between text-xs">
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 uppercase font-medium">From</p>
+                                            <p className="font-semibold text-slate-800">
+                                                {promotion.from_class.name}
+                                                {promotion.from_section ? ` (${promotion.from_section.name})` : ''}
+                                            </p>
+                                            <p className="text-[10px] text-slate-500 font-mono">{promotion.from_academic_year.name}</p>
+                                        </div>
+
+                                        <div className="px-2">
+                                            <ArrowRight className="w-4 h-4 text-indigo-500" />
+                                        </div>
+
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-slate-400 uppercase font-medium">To</p>
+                                            <p className="font-semibold text-slate-800">
+                                                {destinationClass(promotion)}
+                                            </p>
+                                            <p className="text-[10px] text-slate-500 font-mono">{promotion.to_academic_year.name}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Remarks & Actions Footer */}
+                                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+                                        <div className="flex items-center gap-1.5 truncate">
+                                            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                            <span>{new Date(promotion.promotion_date).toLocaleDateString()}</span>
+                                            {promotion.remarks && (
+                                                <span className="text-slate-400 italic truncate max-w-[140px]">
+                                                    • {promotion.remarks}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteClick(promotion)}
+                                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded-lg hover:bg-rose-100 transition-colors"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                            Revert
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
+
+                        {/* Desktop Table (>= 768px) */}
+                        <div className="hidden md:block bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-slate-50/80 border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                                Student
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                                Previous Session & Class
+                                            </th>
+                                            <th className="px-4 py-2.5 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wider w-8">
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                                Promoted Session & Class
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                                Date
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                                Status
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                                Remarks
+                                            </th>
+                                            <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider w-20">
+                                                Action
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 text-xs">
+                                        {promotions.data.map((promotion) => (
+                                            <tr key={promotion.id} className="hover:bg-slate-50/60 transition-colors">
+                                                <td className="px-4 py-2.5">
+                                                    <div className="flex items-center gap-2.5">
+                                                        {promotion.student.photo_url ? (
+                                                            <img
+                                                                src={promotion.student.photo_url}
+                                                                alt=""
+                                                                className="w-8 h-8 rounded-full object-cover border border-slate-100"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100/60 flex items-center justify-center font-bold text-indigo-700 text-xs shrink-0">
+                                                                {promotion.student.first_name.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <p className="font-semibold text-slate-900">
+                                                                {promotion.student.first_name} {promotion.student.last_name}
+                                                            </p>
+                                                            <p className="text-[11px] text-slate-400 font-mono">
+                                                                {promotion.student.admission_number}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <p className="font-medium text-slate-800">
+                                                        {promotion.from_class.name}
+                                                        {promotion.from_section ? ` (${promotion.from_section.name})` : ''}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400 font-mono">
+                                                        {promotion.from_academic_year.name}
+                                                    </p>
+                                                </td>
+                                                <td className="px-2 py-2.5 text-center">
+                                                    <ArrowRight className="w-3.5 h-3.5 text-indigo-400 inline-block" />
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <p className="font-semibold text-slate-900">
+                                                        {destinationClass(promotion)}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400 font-mono">
+                                                        {promotion.to_academic_year.name}
+                                                    </p>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap text-[11px]">
+                                                    {new Date(promotion.promotion_date).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    {getStatusBadge(promotion.status)}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-slate-500 max-w-xs truncate text-[11px]">
+                                                    {promotion.remarks || '—'}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteClick(promotion)}
+                                                        className="p-1.5 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                                                        title="Revert Promotion"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Desktop Pagination */}
+                            <IndexPagination
+                                links={promotions.links ?? []}
+                                from={promotions.from}
+                                to={promotions.to}
+                                total={promotions.total}
+                                lastPage={promotions.last_page}
+                            />
+                        </div>
+
+                        {/* Mobile Pagination */}
+                        <div className="block md:hidden bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                            <IndexPagination
+                                links={promotions.links ?? []}
+                                from={promotions.from}
+                                to={promotions.to}
+                                total={promotions.total}
+                                lastPage={promotions.last_page}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-12 text-center shadow-2xs">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                            <History className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-slate-900 mb-1">No Promotion Records</h3>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                            {filterYear ? 'No promotions match the selected academic year.' : 'Start batch academic transitions for students across academic years.'}
+                        </p>
+                        <Link href="/student-promotions/create">
+                            <Button
+                                size="sm"
+                                icon={<Plus className="w-4 h-4" />}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                                Promote Students
+                            </Button>
+                        </Link>
                     </div>
                 )}
             </div>
 
-            {/* Delete Modal */}
+            {/* Standard ERP Delete/Revert Modal */}
             <DeleteModal
                 isOpen={deleteModal.show}
-                onClose={handleDeleteCancel}
+                onClose={() => setDeleteModal({ show: false, promotion: null })}
                 onConfirm={handleDeleteConfirm}
-                title="Delete Promotion"
-                message="Are you sure you want to delete this promotion record? This will revert the student back to their previous class."
+                title="Revert Promotion Record"
+                message="This returns the student to their previous class and session. Revert is refused when the target year already has attendance or fees for them."
                 itemName={deleteModal.promotion ? `${deleteModal.promotion.student.first_name} ${deleteModal.promotion.student.last_name}'s promotion` : ''}
                 isDeleting={isDeleting}
             />

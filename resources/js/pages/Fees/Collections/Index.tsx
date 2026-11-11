@@ -726,7 +726,7 @@ export default function Index({
                                                     {item.fee_items_summary}
                                                 </span>
                                                 <span className="font-mono text-[10px] shrink-0 text-slate-400">
-                                                    {item.payment_date}
+                                                    {item.payment_date}{item.created_time ? ` · ${item.created_time}` : ''}
                                                 </span>
                                             </div>
 
@@ -802,7 +802,12 @@ export default function Index({
 
                                                     {/* Payment Date */}
                                                     <td className="py-2 px-3 text-slate-600 whitespace-nowrap text-[11px]">
-                                                        {item.payment_date}
+                                                        <div className="font-medium text-slate-900">{item.payment_date}</div>
+                                                        {item.created_at && (
+                                                            <div className="text-[10px] text-slate-400 font-mono" title={`Recorded at: ${item.created_at}`}>
+                                                                {item.created_at}
+                                                            </div>
+                                                        )}
                                                     </td>
 
                                                     {/* Student Details */}

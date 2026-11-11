@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Button from '@/Components/Button';
+import Badge from '@/Components/Badge';
+import FormPageHeader from '@/Components/FormPageHeader';
+import FormCard from '@/Components/FormCard';
+import DeleteModal from '@/Components/DeleteModal';
 import {
     ArrowLeft,
     Edit,
@@ -24,6 +28,10 @@ import {
     Layers,
     Clock,
     BookOpen,
+    ShieldCheck,
+    ExternalLink,
+    Sparkles,
+    FileCheck
 } from 'lucide-react';
 import StudentPrintProfile from './StudentPrintProfile';
 import StudentIDCard from './StudentIDCard';
@@ -107,26 +115,63 @@ export interface Student {
     medical_conditions: string | null;
     allergies: string | null;
     special_notes: string | null;
+    status: string;
     information_correct: boolean;
     photo: string | null;
-    photo_url?: string | null;
-    status: string;
-    email: string;
-    phone: string | null;
-    user?: {
-        name: string;
-        email: string;
-        phone: string | null;
-    };
+    photo_url: string | null;
+    email?: string;
+    phone?: string;
     academic_year?: {
+        id: number;
         name: string;
     };
     school_class?: {
+        id: number;
         name: string;
     };
     section?: {
+        id: number;
         name: string;
     };
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+        phone: string;
+    };
+    parents?: Array<{
+        id: number;
+        relation?: string;
+        father_name?: string;
+        mother_name?: string;
+        guardian_name?: string;
+        user?: {
+            id: number;
+            name: string;
+            username?: string;
+            email: string;
+            phone: string;
+            status?: string;
+        };
+    }>;
+    parent?: {
+        id: number;
+        relation?: string;
+        user?: {
+            id: number;
+            name: string;
+            username?: string;
+            email: string;
+            phone: string;
+            status?: string;
+        };
+    };
+    documents?: Array<{
+        id: number;
+        title: string;
+        type: string;
+        file_path: string;
+    }>;
     attendance?: Array<{
         date: string;
         status: string;
@@ -156,43 +201,28 @@ interface ShowProps {
 }
 
 export default function Show({ student }: ShowProps) {
+    const [activeTab, setActiveTab] = useState<'personal' | 'family' | 'health' | 'fees'>('personal');
     const [showPrintProfile, setShowPrintProfile] = useState(false);
     const [showIDCard, setShowIDCard] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const InfoItem = ({ label, value, icon }: { label: string; value: any; icon?: React.ReactNode }) => {
-        if (!value) return null;
-        return (
-            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                {icon && <div className="text-blue-600 mt-1">{icon}</div>}
-                <div className="flex-1">
-                    <p className="text-sm text-gray-600 font-medium">{label}</p>
-                    <p className="text-gray-900 mt-1">{value}</p>
-                </div>
-            </div>
-        );
+    const handleDeleteConfirm = () => {
+        setIsDeleting(true);
+        router.delete(`/students/${student.id}`, {
+            onFinish: () => {
+                setIsDeleting(false);
+                setDeleteModalOpen(false);
+            },
+        });
     };
 
-    const StatusBadge = ({ status }: { status: string }) => {
-        const colors: Record<string, string> = {
-            active: 'bg-green-100 text-green-800',
-            passed: 'bg-blue-100 text-blue-800',
-            transferred: 'bg-yellow-100 text-yellow-800',
-            dropped: 'bg-red-100 text-red-800',
-            suspended: 'bg-orange-100 text-orange-800',
-        };
-
-        return (
-            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-            </span>
-        );
-    };
-
-    const formatDate = (date: string) => {
+    const formatDate = (date: string | null) => {
+        if (!date) return 'N/A';
         return new Date(date).toLocaleDateString('en-US', {
             year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+            month: 'short',
+            day: 'numeric',
         });
     };
 
@@ -210,497 +240,570 @@ export default function Show({ student }: ShowProps) {
         return parts.length > 0 ? parts.join(', ') : student[`${prefix}_address`] || 'Not provided';
     };
 
+    const InfoRow = ({ label, value, icon }: { label: string; value: any; icon?: React.ReactNode }) => {
+        if (!value && value !== 0) return null;
+        return (
+            <div className="flex items-start justify-between py-1.5 border-b border-slate-100 last:border-none text-xs">
+                <span className="text-slate-500 font-medium flex items-center gap-1.5 shrink-0">
+                    {icon}
+                    {label}
+                </span>
+                <span className="text-slate-900 font-semibold text-right max-w-[65%] truncate">
+                    {value}
+                </span>
+            </div>
+        );
+    };
+
+    // Resolve linked parent record (either via student.parents array or student.parent)
+    const linkedParent = (student.parents && student.parents.length > 0)
+        ? student.parents[0]
+        : (student.parent ? student.parent : null);
+
     return (
         <AuthenticatedLayout>
             <Head title={`Student: ${student.first_name} ${student.last_name}`} />
 
-            <div className="space-y-6 animate-fade-in">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={<ArrowLeft className="w-4 h-4" />}
-                            onClick={() => router.visit('/students')}
-                        >
-                            Back
-                        </Button>
-                        <div className="min-w-0">
-                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent truncate">
-                                Student Profile
-                            </h1>
-                            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">View detailed student information</p>
+            <div className="space-y-4 max-w-6xl">
+                {/* Standard Admin Header */}
+                <FormPageHeader
+                    title={`${student.first_name} ${student.last_name}`}
+                    subtitle={`${student.school_class?.name || 'Class N/A'} • Sec: ${student.section?.name || 'A'} • Roll: ${student.roll_number || 'N/A'} • Adm: ${student.admission_number}`}
+                    backUrl="/students"
+                    backLabel="Students"
+                    badgeText={student.status}
+                    actions={
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowPrintProfile(!showPrintProfile)}
+                                icon={<Printer className="w-3.5 h-3.5" />}
+                            >
+                                Profile Slip
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowIDCard(!showIDCard)}
+                                icon={<CreditCard className="w-3.5 h-3.5" />}
+                            >
+                                ID Card
+                            </Button>
+                            <Link href={`/students/${student.id}/edit`}>
+                                <Button
+                                    size="sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs"
+                                    icon={<Edit className="w-3.5 h-3.5" />}
+                                >
+                                    Edit
+                                </Button>
+                            </Link>
+                            <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => setDeleteModalOpen(true)}
+                                icon={<Trash2 className="w-3.5 h-3.5" />}
+                            >
+                                Delete
+                            </Button>
                         </div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={<Printer className="w-4 h-4" />}
-                            onClick={() => setShowPrintProfile(!showPrintProfile)}
-                            className="justify-center"
-                        >
-                            <span className="truncate">Profile</span>
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={<CreditCard className="w-4 h-4" />}
-                            onClick={() => setShowIDCard(!showIDCard)}
-                            className="justify-center"
-                        >
-                            <span className="truncate">ID Card</span>
-                        </Button>
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            icon={<Edit className="w-4 h-4" />}
-                            onClick={() => router.visit(`/students/${student.id}/edit`)}
-                            className="justify-center"
-                        >
-                            Edit
-                        </Button>
-                        <Button
-                            variant="danger"
-                            size="sm"
-                            icon={<Trash2 className="w-4 h-4" />}
-                            onClick={() => {
-                                if (confirm('Are you sure you want to delete this student?')) {
-                                    router.delete(`/students/${student.id}`);
-                                }
-                            }}
-                            className="justify-center"
-                        >
-                            Delete
-                        </Button>
-                    </div>
-                </div>
+                    }
+                />
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {/* Left Column - Profile Card */}
-                    <div className="lg:col-span-1 space-y-6">
-                        {/* Profile Photo & Basic Info */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex flex-col items-center">
+                {/* 2-Column Responsive Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* LEFT COLUMN: Identity, Academic Summary & Linked Parent Hub */}
+                    <div className="space-y-4">
+                        {/* Student Avatar & Basic Identity */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs text-center">
+                            <div className="inline-block relative">
                                 {student.photo_url ? (
                                     <img
                                         src={student.photo_url}
-                                        alt={`${student.first_name} ${student.last_name}`}
-                                        className="w-32 h-32 rounded-full object-cover border-4 border-blue-200 shadow-lg"
+                                        alt=""
+                                        className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 mx-auto"
                                     />
                                 ) : (
-                                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center border-4 border-blue-200 shadow-lg">
-                                        <User className="w-16 h-16 text-blue-400" />
+                                    <div className="w-20 h-20 rounded-full bg-slate-100 border-2 border-slate-200 flex items-center justify-center font-bold text-xl text-slate-700 mx-auto">
+                                        {student.first_name?.charAt(0)}{student.last_name?.charAt(0)}
                                     </div>
                                 )}
-
-                                <h2 className="text-2xl font-bold text-gray-900 mt-4 text-center">
-                                    {student.first_name} {student.last_name}
-                                </h2>
-
-                                {(student.first_name_bengali || student.last_name_bengali || student.name_bn) && (
-                                    <p className="text-lg text-gray-600 mt-1">
-                                        {student.name_bn || `${student.first_name_bengali || ''} ${student.last_name_bengali || ''}`.trim()}
-                                    </p>
-                                )}
-
-                                <div className="mt-3">
-                                    <StatusBadge status={student.status} />
-                                </div>
-
-                                <div className="mt-4 w-full space-y-2">
-                                    <div className="flex justify-between items-center py-2 border-b">
-                                        <span className="text-sm text-gray-600">Admission No</span>
-                                        <span className="font-semibold text-gray-900">{student.admission_number}</span>
-                                    </div>
-                                    {student.student_id && (
-                                        <div className="flex justify-between items-center py-2 border-b">
-                                            <span className="text-sm text-gray-600">Student ID</span>
-                                            <span className="font-semibold text-gray-900">{student.student_id}</span>
-                                        </div>
-                                    )}
-                                    {student.roll_number && (
-                                        <div className="flex justify-between items-center py-2 border-b">
-                                            <span className="text-sm text-gray-600">Roll Number</span>
-                                            <span className="font-semibold text-gray-900">{student.roll_number}</span>
-                                        </div>
-                                    )}
-                                    {student.form_number && (
-                                        <div className="flex justify-between items-center py-2 border-b">
-                                            <span className="text-sm text-gray-600">Form Number</span>
-                                            <span className="font-semibold text-gray-900">{student.form_number}</span>
-                                        </div>
-                                    )}
-                                </div>
+                                <span className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${student.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             </div>
-                        </div>
 
-                        {/* Academic Info Card */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                                <GraduationCap className="w-5 h-5 text-blue-600" />
-                                Academic Information
+                            <h3 className="text-sm font-bold text-slate-900 mt-2.5">
+                                {student.first_name} {student.last_name}
                             </h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-600">Academic Year</span>
-                                    <span className="font-semibold text-gray-900">{student.academic_year?.name || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-600">Class</span>
-                                    <span className="font-semibold text-gray-900">{student.school_class?.name || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-600">Section</span>
-                                    <span className="font-semibold text-gray-900">{student.section?.name || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-600">Admission Date</span>
-                                    <span className="font-semibold text-gray-900">{formatDate(student.admission_date)}</span>
-                                </div>
-                                {student.monthly_fee && (
-                                    <div className="flex justify-between items-center pt-2 border-t">
-                                        <span className="text-sm text-gray-600">Monthly Fee</span>
-                                        <span className="font-bold text-blue-600 text-lg">৳ {student.monthly_fee}</span>
-                                    </div>
+
+                            {(student.name_bn || student.first_name_bengali) && (
+                                <p className="text-xs text-slate-500">
+                                    {student.name_bn || `${student.first_name_bengali || ''} ${student.last_name_bengali || ''}`.trim()}
+                                </p>
+                            )}
+
+                            <div className="mt-2 flex items-center justify-center gap-1.5">
+                                <Badge
+                                    variant={student.status === 'active' ? 'success' : 'default'}
+                                    className="text-[10px] uppercase font-semibold"
+                                >
+                                    {student.status}
+                                </Badge>
+                                {student.information_correct && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-100">
+                                        <CheckCircle className="w-2.5 h-2.5" /> Verified
+                                    </span>
                                 )}
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1">
+                                <InfoRow label="Admission No" value={<span className="font-mono">{student.admission_number}</span>} />
+                                {student.roll_number && <InfoRow label="Roll Number" value={<span className="font-mono">{student.roll_number}</span>} />}
+                                {student.student_id && <InfoRow label="Student ID" value={<span className="font-mono">{student.student_id}</span>} />}
+                                {student.form_number && <InfoRow label="Form No" value={<span className="font-mono">{student.form_number}</span>} />}
                             </div>
                         </div>
 
-                        {/* Coaching Batches Card */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <Layers className="w-5 h-5 text-indigo-600" />
-                                    Enrolled Batches
-                                </h3>
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
-                                    {student.batch_enrollments?.length || 0}
-                                </span>
-                            </div>
+                        {/* LINKED PARENT PORTAL HUB CARD */}
+                        <FormCard
+                            title="Linked Parent Portal"
+                            description="Family portal account & credentials"
+                            icon={<ShieldCheck className="w-4 h-4 text-indigo-600" />}
+                        >
+                            {linkedParent ? (
+                                <div className="space-y-2 text-xs">
+                                    <div className="p-2.5 bg-indigo-50/50 border border-indigo-100/70 rounded-xl space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-indigo-950">
+                                                {linkedParent.user?.name || (linkedParent as any).father_name || 'Linked Parent'}
+                                            </span>
+                                            <span className="text-[10px] text-indigo-700 bg-white border border-indigo-200 px-1.5 py-0.2 rounded font-semibold capitalize">
+                                                {linkedParent.relation || 'Parent'}
+                                            </span>
+                                        </div>
 
-                            {student.batch_enrollments && student.batch_enrollments.length > 0 ? (
-                                <div className="space-y-3">
-                                    {student.batch_enrollments.map((enrollment: any) => (
-                                        <div
-                                            key={enrollment.id}
-                                            className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <Link
-                                                    href={`/batches/${enrollment.batch?.id}`}
-                                                    className="font-bold text-gray-900 hover:text-indigo-600 text-sm"
-                                                >
-                                                    {enrollment.batch?.name}
-                                                </Link>
-                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                                    enrollment.status === 'active'
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : (enrollment.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700')
-                                                }`}>
-                                                    {enrollment.status.toUpperCase()}
+                                        {linkedParent.user?.username && (
+                                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-indigo-100/60">
+                                                <span className="text-slate-500">Username:</span>
+                                                <span className="font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                                    {linkedParent.user.username}
                                                 </span>
                                             </div>
-                                            {enrollment.batch?.course && (
-                                                <p className="text-xs text-indigo-600 font-medium mt-0.5 flex items-center gap-1">
-                                                    <BookOpen className="w-3 h-3" />
-                                                    <span>{enrollment.batch.course.name}</span>
-                                                </p>
-                                            )}
-                                            {enrollment.batch?.formatted_schedule && (
-                                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                    <Clock className="w-3 h-3 text-gray-400" />
-                                                    <span>{enrollment.batch.formatted_schedule}</span>
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                                        )}
+
+                                        {linkedParent.user?.phone && (
+                                            <div className="flex items-center justify-between text-[11px]">
+                                                <span className="text-slate-500">Phone:</span>
+                                                <a href={`tel:${linkedParent.user.phone}`} className="font-mono text-indigo-600 hover:underline">
+                                                    {linkedParent.user.phone}
+                                                </a>
+                                            </div>
+                                        )}
+
+                                        {linkedParent.user?.email && (
+                                            <div className="flex items-center justify-between text-[11px]">
+                                                <span className="text-slate-500">Email:</span>
+                                                <span className="text-slate-600 truncate max-w-[150px]">
+                                                    {linkedParent.user.email}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="pt-1 flex items-center justify-between">
+                                        <span className="text-[11px] text-slate-400">Guardian Profile</span>
+                                        <Link
+                                            href={`/student-parents/${linkedParent.id}`}
+                                            className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                                        >
+                                            View Parent <ExternalLink className="w-3 h-3" />
+                                        </Link>
+                                    </div>
                                 </div>
                             ) : (
-                                <p className="text-xs text-gray-400 italic">No coaching batches enrolled</p>
+                                <div className="text-center py-3 space-y-2">
+                                    <div className="p-2.5 bg-amber-50 border border-amber-200/70 rounded-xl text-left">
+                                        <p className="text-xs font-semibold text-amber-900">No Parent Account Linked</p>
+                                        <p className="text-[11px] text-amber-700 mt-0.5">
+                                            This student is not attached to an active parent portal login account yet.
+                                        </p>
+                                    </div>
+                                    <Link href="/student-parents">
+                                        <Button
+                                            size="sm"
+                                            className="w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs text-xs mt-1"
+                                            icon={<Sparkles className="w-3.5 h-3.5" />}
+                                        >
+                                            Quick Assign Parent
+                                        </Button>
+                                    </Link>
+                                </div>
                             )}
-                        </div>
+                        </FormCard>
 
-                        {/* Contact Info Card */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                                <Phone className="w-5 h-5 text-blue-600" />
-                                Contact Information
-                            </h3>
-                            <div className="space-y-3">
-                                <InfoItem
-                                    label="Email"
-                                    value={student.user?.email || student.email}
-                                    icon={<Mail className="w-4 h-4" />}
-                                />
-                                {(student.user?.phone || student.phone) && (
-                                    <InfoItem
-                                        label="Phone"
-                                        value={student.user?.phone || student.phone}
-                                        icon={<Phone className="w-4 h-4" />}
+                        {/* Academic Details Card */}
+                        <FormCard
+                            title="Academic Enrolment"
+                            icon={<GraduationCap className="w-4 h-4 text-emerald-600" />}
+                        >
+                            <div className="space-y-1 text-xs">
+                                <InfoRow label="Academic Year" value={student.academic_year?.name || 'N/A'} />
+                                <InfoRow label="Class" value={student.school_class?.name || 'N/A'} />
+                                <InfoRow label="Section" value={student.section?.name || 'N/A'} />
+                                <InfoRow label="Admission Date" value={formatDate(student.admission_date)} />
+                                {student.monthly_fee && (
+                                    <InfoRow
+                                        label="Monthly Fee"
+                                        value={<span className="font-mono text-emerald-700 font-bold">৳{student.monthly_fee}</span>}
                                     />
                                 )}
                             </div>
-                        </div>
-                    </div>
+                        </FormCard>
 
-                    {/* Right Column - Detailed Information */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Personal Information */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 pb-4 border-b">
-                                <User className="w-5 h-5 text-blue-600" />
-                                Personal Information
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                <InfoItem
-                                    label="Date of Birth"
-                                    value={formatDate(student.date_of_birth)}
-                                    icon={<Calendar className="w-4 h-4" />}
-                                />
-                                {student.birth_place_district && (
-                                    <InfoItem label="Birth Place" value={student.birth_place_district} />
-                                )}
-                                <InfoItem label="Gender" value={student.gender.charAt(0).toUpperCase() + student.gender.slice(1)} />
-                                {student.blood_group && (
-                                    <InfoItem label="Blood Group" value={student.blood_group} />
-                                )}
-                                {student.religion && (
-                                    <InfoItem label="Religion" value={student.religion} />
-                                )}
-                                <InfoItem label="Nationality" value={student.nationality || 'Bangladeshi'} />
-                                {student.birth_certificate_no && (
-                                    <InfoItem label="Birth Certificate No." value={student.birth_certificate_no} />
-                                )}
-                                {student.birth_certificate_number && (
-                                    <InfoItem label="Birth Certificate (Alt)" value={student.birth_certificate_number} />
-                                )}
-                            </div>
-
-                            {student.minorities && (
-                                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                                    <p className="text-sm font-semibold text-yellow-800">Minority Community</p>
-                                    {student.minority_name && (
-                                        <p className="text-yellow-900 mt-1">{student.minority_name}</p>
+                        {/* Quick Contact Card */}
+                        {(student.email || student.phone || student.user?.email || student.user?.phone) && (
+                            <FormCard
+                                title="Direct Contact"
+                                icon={<Phone className="w-4 h-4 text-slate-600" />}
+                            >
+                                <div className="space-y-1 text-xs">
+                                    {(student.phone || student.user?.phone) && (
+                                        <InfoRow
+                                            label="Phone"
+                                            value={
+                                                <a href={`tel:${student.phone || student.user?.phone}`} className="font-mono text-indigo-600 hover:underline">
+                                                    {student.phone || student.user?.phone}
+                                                </a>
+                                            }
+                                        />
+                                    )}
+                                    {(student.email || student.user?.email) && (
+                                        <InfoRow
+                                            label="Email"
+                                            value={
+                                                <a href={`mailto:${student.email || student.user?.email}`} className="text-indigo-600 hover:underline truncate">
+                                                    {student.email || student.user?.email}
+                                                </a>
+                                            }
+                                        />
                                     )}
                                 </div>
-                            )}
+                            </FormCard>
+                        )}
+                    </div>
 
-                            {student.handicap && (
-                                <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                    <p className="text-sm font-semibold text-purple-800">Disability / Special Needs</p>
-                                    <p className="text-purple-900 mt-1">{student.handicap}</p>
-                                </div>
-                            )}
+                    {/* RIGHT COLUMN: Tabbed Detail Sections */}
+                    <div className="lg:col-span-2 space-y-4">
+                        {/* Tab Switcher */}
+                        <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200/80 overflow-x-auto">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('personal')}
+                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                                    activeTab === 'personal'
+                                        ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                📋 Personal & Address
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('family')}
+                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                                    activeTab === 'family'
+                                        ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                👨‍👩‍👧 Family & Guardians
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('health')}
+                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                                    activeTab === 'health'
+                                        ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                🩺 Education & Health
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('fees')}
+                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                                    activeTab === 'fees'
+                                        ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                💳 Fees & Batches
+                            </button>
                         </div>
 
-                        {/* Address Information */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 pb-4 border-b">
-                                <MapPin className="w-5 h-5 text-blue-600" />
-                                Address Information
-                            </h3>
+                        {/* TAB 1: Personal & Address */}
+                        {activeTab === 'personal' && (
+                            <div className="space-y-4">
+                                <FormCard
+                                    title="Personal Details"
+                                    icon={<User className="w-4 h-4 text-slate-700" />}
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                        <InfoRow label="Date of Birth" value={formatDate(student.date_of_birth)} />
+                                        <InfoRow label="Gender" value={student.gender?.toUpperCase()} />
+                                        <InfoRow label="Blood Group" value={student.blood_group} />
+                                        <InfoRow label="Religion" value={student.religion} />
+                                        <InfoRow label="Nationality" value={student.nationality || 'Bangladeshi'} />
+                                        <InfoRow label="Birth District" value={student.birth_place_district} />
+                                        {student.birth_certificate_no && (
+                                            <InfoRow label="Birth Certificate #" value={<span className="font-mono">{student.birth_certificate_no}</span>} />
+                                        )}
+                                        {student.birth_certificate_number && (
+                                            <InfoRow label="Birth Cert (Alt)" value={<span className="font-mono">{student.birth_certificate_number}</span>} />
+                                        )}
+                                    </div>
 
-                            <div className="space-y-6 mt-4">
-                                {/* Present Address */}
-                                <div className="p-4 bg-blue-50 rounded-lg">
-                                    <h4 className="font-semibold text-gray-900 mb-3">Present Address</h4>
-                                    <p className="text-gray-700">{getFullAddress('present')}</p>
-                                </div>
+                                    {student.minorities && (
+                                        <div className="mt-3 p-2.5 bg-amber-50/70 border border-amber-200/70 rounded-lg text-xs text-amber-900">
+                                            <strong>Minority Community:</strong> {student.minority_name || 'Yes'}
+                                        </div>
+                                    )}
 
-                                {/* Permanent Address */}
-                                <div className="p-4 bg-green-50 rounded-lg">
-                                    <h4 className="font-semibold text-gray-900 mb-3">Permanent Address</h4>
-                                    <p className="text-gray-700">{getFullAddress('permanent')}</p>
-                                </div>
+                                    {student.handicap && (
+                                        <div className="mt-2 p-2.5 bg-purple-50/70 border border-purple-200/70 rounded-lg text-xs text-purple-900">
+                                            <strong>Special Needs / Disability:</strong> {student.handicap}
+                                        </div>
+                                    )}
+                                </FormCard>
+
+                                <FormCard
+                                    title="Address Records"
+                                    icon={<MapPin className="w-4 h-4 text-slate-700" />}
+                                >
+                                    <div className="space-y-2.5">
+                                        <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl">
+                                            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                                                Present Address
+                                            </span>
+                                            <p className="text-xs text-slate-800">{getFullAddress('present')}</p>
+                                        </div>
+
+                                        <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl">
+                                            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                                                Permanent Address
+                                            </span>
+                                            <p className="text-xs text-slate-800">{getFullAddress('permanent')}</p>
+                                        </div>
+                                    </div>
+                                </FormCard>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Parent/Guardian Information */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 pb-4 border-b">
-                                <Users className="w-5 h-5 text-blue-600" />
-                                Parent/Guardian Information
-                            </h3>
-
-                            <div className="space-y-6 mt-4">
+                        {/* TAB 2: Family & Guardians */}
+                        {activeTab === 'family' && (
+                            <div className="space-y-4">
                                 {/* Father Information */}
-                                <div className="p-4 bg-blue-50 rounded-lg">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-semibold text-gray-900">Father's Information</h4>
-                                        {student.father_dead && (
-                                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Deceased</span>
-                                        )}
+                                <FormCard
+                                    title="Father's Information"
+                                    icon={<User className="w-4 h-4 text-slate-700" />}
+                                    action={
+                                        student.father_dead ? (
+                                            <span className="text-[10px] bg-red-100 text-red-800 font-semibold px-2 py-0.5 rounded-full">Deceased</span>
+                                        ) : null
+                                    }
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                        <InfoRow label="Name (EN)" value={student.father_name_en || student.father_name} />
+                                        <InfoRow label="Name (BN)" value={student.father_name_bn} />
+                                        <InfoRow label="Phone" value={student.father_phone || student.father_mobile} />
+                                        <InfoRow label="NID" value={student.father_nid} />
+                                        <InfoRow label="Date of Birth" value={formatDate(student.father_dob)} />
+                                        <InfoRow label="Occupation" value={student.father_occupation} />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {(student.father_name_en || student.father_name) && (
-                                            <InfoItem label="Name (English)" value={student.father_name_en || student.father_name} />
-                                        )}
-                                        {student.father_name_bn && (
-                                            <InfoItem label="Name (Bengali)" value={student.father_name_bn} />
-                                        )}
-                                        {student.father_nid && (
-                                            <InfoItem label="NID" value={student.father_nid} />
-                                        )}
-                                        {student.father_dob && (
-                                            <InfoItem label="Date of Birth" value={formatDate(student.father_dob)} />
-                                        )}
-                                        {student.father_occupation && (
-                                            <InfoItem label="Occupation" value={student.father_occupation} />
-                                        )}
-                                        {student.father_phone && (
-                                            <InfoItem label="Phone" value={student.father_phone} icon={<Phone className="w-4 h-4" />} />
-                                        )}
-                                        {student.father_mobile && (
-                                            <InfoItem label="Mobile" value={student.father_mobile} icon={<Phone className="w-4 h-4" />} />
-                                        )}
-                                    </div>
-                                </div>
+                                </FormCard>
 
                                 {/* Mother Information */}
-                                <div className="p-4 bg-pink-50 rounded-lg">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-semibold text-gray-900">Mother's Information</h4>
-                                        {student.mother_dead && (
-                                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Deceased</span>
-                                        )}
+                                <FormCard
+                                    title="Mother's Information"
+                                    icon={<User className="w-4 h-4 text-slate-700" />}
+                                    action={
+                                        student.mother_dead ? (
+                                            <span className="text-[10px] bg-red-100 text-red-800 font-semibold px-2 py-0.5 rounded-full">Deceased</span>
+                                        ) : null
+                                    }
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                        <InfoRow label="Name (EN)" value={student.mother_name_en || student.mother_name} />
+                                        <InfoRow label="Name (BN)" value={student.mother_name_bn} />
+                                        <InfoRow label="Phone" value={student.mother_phone || student.mother_mobile} />
+                                        <InfoRow label="NID" value={student.mother_nid} />
+                                        <InfoRow label="Date of Birth" value={formatDate(student.mother_dob)} />
+                                        <InfoRow label="Occupation" value={student.mother_occupation} />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {(student.mother_name_en || student.mother_name) && (
-                                            <InfoItem label="Name (English)" value={student.mother_name_en || student.mother_name} />
-                                        )}
-                                        {student.mother_name_bn && (
-                                            <InfoItem label="Name (Bengali)" value={student.mother_name_bn} />
-                                        )}
-                                        {student.mother_nid && (
-                                            <InfoItem label="NID" value={student.mother_nid} />
-                                        )}
-                                        {student.mother_dob && (
-                                            <InfoItem label="Date of Birth" value={formatDate(student.mother_dob)} />
-                                        )}
-                                        {student.mother_occupation && (
-                                            <InfoItem label="Occupation" value={student.mother_occupation} />
-                                        )}
-                                        {student.mother_phone && (
-                                            <InfoItem label="Phone" value={student.mother_phone} icon={<Phone className="w-4 h-4" />} />
-                                        )}
-                                        {student.mother_mobile && (
-                                            <InfoItem label="Mobile" value={student.mother_mobile} icon={<Phone className="w-4 h-4" />} />
-                                        )}
-                                    </div>
-                                </div>
+                                </FormCard>
 
-                                {/* Guardian Information */}
+                                {/* Legal Guardian */}
                                 {(student.guardian_name || student.guardian_phone) && (
-                                    <div className="p-4 bg-yellow-50 rounded-lg">
-                                        <h4 className="font-semibold text-gray-900 mb-3">Legal Guardian</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            {student.guardian_name && (
-                                                <InfoItem label="Name" value={student.guardian_name} />
-                                            )}
-                                            {student.guardian_phone && (
-                                                <InfoItem label="Phone" value={student.guardian_phone} icon={<Phone className="w-4 h-4" />} />
-                                            )}
-                                            {student.guardian_relation && (
-                                                <InfoItem label="Relation" value={student.guardian_relation.charAt(0).toUpperCase() + student.guardian_relation.slice(1)} />
-                                            )}
+                                    <FormCard
+                                        title="Legal Guardian (Other than Parents)"
+                                        icon={<Users className="w-4 h-4 text-slate-700" />}
+                                    >
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                            <InfoRow label="Guardian Name" value={student.guardian_name} />
+                                            <InfoRow label="Relation" value={student.guardian_relation} />
+                                            <InfoRow label="Phone" value={student.guardian_phone} />
                                         </div>
-                                    </div>
+                                    </FormCard>
                                 )}
                             </div>
-                        </div>
+                        )}
 
-                        {/* Previous Education & Medical */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 pb-4 border-b">
-                                <FileText className="w-5 h-5 text-blue-600" />
-                                Academic Background & Health
-                            </h3>
-
-                            <div className="space-y-6 mt-4">
-                                {/* Previous Education */}
-                                {(student.previous_school || student.previous_class || student.previous_exam_result) && (
-                                    <div className="p-4 bg-purple-50 rounded-lg">
-                                        <h4 className="font-semibold text-gray-900 mb-3">Previous Education</h4>
+                        {/* TAB 3: Education & Health */}
+                        {activeTab === 'health' && (
+                            <div className="space-y-4">
+                                <FormCard
+                                    title="Previous Academic Background"
+                                    icon={<BookOpen className="w-4 h-4 text-slate-700" />}
+                                >
+                                    {(student.previous_school || student.previous_class || student.previous_exam_result) ? (
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                            {student.previous_school && (
-                                                <InfoItem label="Previous School" value={student.previous_school} />
-                                            )}
-                                            {student.previous_class && (
-                                                <InfoItem label="Previous Class" value={student.previous_class} />
-                                            )}
-                                            {student.previous_exam_result && (
-                                                <InfoItem label="Previous Result" value={student.previous_exam_result} />
-                                            )}
+                                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                                <span className="text-[10px] text-slate-400 font-semibold uppercase">Previous School</span>
+                                                <p className="text-xs font-bold text-slate-800 mt-0.5">{student.previous_school || 'N/A'}</p>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                                <span className="text-[10px] text-slate-400 font-semibold uppercase">Previous Class</span>
+                                                <p className="text-xs font-bold text-slate-800 mt-0.5">{student.previous_class || 'N/A'}</p>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                                <span className="text-[10px] text-slate-400 font-semibold uppercase">Exam Result / GPA</span>
+                                                <p className="text-xs font-bold text-slate-800 mt-0.5">{student.previous_exam_result || 'N/A'}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">No previous academic background recorded.</p>
+                                    )}
+                                </FormCard>
 
-                                {/* Medical Information */}
-                                {(student.medical_conditions || student.allergies || student.special_notes) && (
-                                    <div className="p-4 bg-red-50 rounded-lg">
-                                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                            <Heart className="w-5 h-5 text-red-600" />
-                                            Health & Medical Information
-                                        </h4>
-                                        <div className="space-y-3">
+                                <FormCard
+                                    title="Health & Medical Alerts"
+                                    icon={<Heart className="w-4 h-4 text-rose-600" />}
+                                >
+                                    {(student.medical_conditions || student.allergies || student.special_notes) ? (
+                                        <div className="space-y-2.5">
                                             {student.medical_conditions && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-700">Medical Conditions</p>
-                                                    <p className="text-gray-900 mt-1">{student.medical_conditions}</p>
+                                                <div className="p-2.5 bg-rose-50/70 border border-rose-200/70 rounded-xl">
+                                                    <span className="text-[11px] font-bold text-rose-900 block">Medical Conditions</span>
+                                                    <p className="text-xs text-rose-800 mt-0.5">{student.medical_conditions}</p>
                                                 </div>
                                             )}
                                             {student.allergies && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-700">Allergies</p>
-                                                    <p className="text-gray-900 mt-1">{student.allergies}</p>
+                                                <div className="p-2.5 bg-amber-50/70 border border-amber-200/70 rounded-xl">
+                                                    <span className="text-[11px] font-bold text-amber-900 block">Allergies</span>
+                                                    <p className="text-xs text-amber-800 mt-0.5">{student.allergies}</p>
                                                 </div>
                                             )}
                                             {student.special_notes && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-700">Special Notes</p>
-                                                    <p className="text-gray-900 mt-1">{student.special_notes}</p>
+                                                <div className="p-2.5 bg-slate-50 border border-slate-200/70 rounded-xl">
+                                                    <span className="text-[11px] font-bold text-slate-700 block">Special Staff Notes</span>
+                                                    <p className="text-xs text-slate-700 mt-0.5">{student.special_notes}</p>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                )}
-
-                                {/* Information Verification */}
-                                <div className={`p-4 rounded-lg ${student.information_correct ? 'bg-green-50' : 'bg-gray-50'}`}>
-                                    <div className="flex items-center gap-2">
-                                        {student.information_correct ? (
-                                            <>
-                                                <CheckCircle className="w-5 h-5 text-green-600" />
-                                                <span className="font-semibold text-green-900">Information Verified</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <XCircle className="w-5 h-5 text-gray-600" />
-                                                <span className="font-semibold text-gray-900">Information Not Verified</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">No medical conditions or allergies reported.</p>
+                                    )}
+                                </FormCard>
                             </div>
-                        </div>
+                        )}
+
+                        {/* TAB 4: Fees & Batches */}
+                        {activeTab === 'fees' && (
+                            <div className="space-y-4">
+                                <FormCard
+                                    title="Fee Collections History"
+                                    icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
+                                >
+                                    {student.fee_collections && student.fee_collections.length > 0 ? (
+                                        <div className="border border-slate-200/80 rounded-xl overflow-hidden">
+                                            <table className="w-full text-xs">
+                                                <thead className="bg-slate-50 border-b border-slate-200/80">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-left font-semibold text-[11px] text-slate-600">Date</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-[11px] text-slate-600">Amount</th>
+                                                        <th className="px-3 py-2 text-left font-semibold text-[11px] text-slate-600">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {student.fee_collections.map((fee, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50/70">
+                                                            <td className="px-3 py-1.5">{formatDate(fee.date)}</td>
+                                                            <td className="px-3 py-1.5 font-bold font-mono text-emerald-700">৳{fee.amount}</td>
+                                                            <td className="px-3 py-1.5 capitalize text-slate-700">{fee.status}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">No fee collection records yet.</p>
+                                    )}
+                                </FormCard>
+
+                                <FormCard
+                                    title="Student Document Vault"
+                                    icon={<FileCheck className="w-4 h-4 text-indigo-600" />}
+                                    action={
+                                        <Link href={`/students/${student.id}/documents`}>
+                                            <Button size="sm" variant="outline" className="text-xs">
+                                                Manage Documents
+                                            </Button>
+                                        </Link>
+                                    }
+                                >
+                                    {student.documents && student.documents.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {student.documents.map((doc) => (
+                                                <div key={doc.id} className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between text-xs">
+                                                    <span className="font-semibold text-slate-800 truncate">{doc.title}</span>
+                                                    <span className="text-[10px] text-slate-400 uppercase font-mono">{doc.type}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">No uploaded documents.</p>
+                                    )}
+                                </FormCard>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Print Components - Show when buttons clicked */}
+                {/* Print Profile View Toggle */}
                 {showPrintProfile && (
-                    <div className="mt-8">
+                    <div className="mt-6 pt-4 border-t border-slate-200">
                         <StudentPrintProfile student={student} appName={appName} />
                     </div>
                 )}
 
+                {/* ID Card View Toggle */}
                 {showIDCard && (
-                    <div className="mt-8">
+                    <div className="mt-6 pt-4 border-t border-slate-200">
                         <StudentIDCard student={student} appName={appName} />
                     </div>
                 )}
             </div>
+
+            <DeleteModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Student Record"
+                message="Are you sure you want to delete this student? All attendance, document links, and profile history will be permanently deleted."
+                itemName={`${student.first_name} ${student.last_name}`}
+                isDeleting={isDeleting}
+            />
         </AuthenticatedLayout>
     );
 }

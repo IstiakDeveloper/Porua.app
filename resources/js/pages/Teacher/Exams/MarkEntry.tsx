@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { Save, ArrowLeft, UserCheck, UserX } from 'lucide-react';
+import { Save, ArrowLeft, UserCheck, UserX, Calculator, CheckCircle2 } from 'lucide-react';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Exam {
     id: number;
@@ -31,12 +32,12 @@ interface Props {
     students: Student[];
 }
 
-export default function MarkEntry({ exam, subject, students }: Props) {
+export default function MarkEntry({ exam, subject, students = [] }: Props) {
     const [marks, setMarks] = useState<{ [key: number]: { theory_marks: string; practical_marks: string; is_absent: boolean } }>(
         students.reduce((acc, student) => {
             acc[student.id] = {
-                theory_marks: student.theory_marks?.toString() || '',
-                practical_marks: student.practical_marks?.toString() || '',
+                theory_marks: student.theory_marks !== undefined && student.theory_marks !== null ? student.theory_marks.toString() : '',
+                practical_marks: student.practical_marks !== undefined && student.practical_marks !== null ? student.practical_marks.toString() : '',
                 is_absent: student.is_absent || false,
             };
             return acc;
@@ -85,6 +86,7 @@ export default function MarkEntry({ exam, subject, students }: Props) {
             subject_total_marks: parseFloat(totalMarks) || 100,
             marks: formattedMarks,
         }, {
+            preserveScroll: true,
             onSuccess: () => {
                 setSaving(false);
             },
@@ -96,122 +98,182 @@ export default function MarkEntry({ exam, subject, students }: Props) {
 
     return (
         <AuthenticatedLayout>
-            <Head title="Enter Marks" />
+            <Head title={`Mark Entry - ${subject.name}`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    {/* Header */}
-                    <div className="mb-6">
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title={`Gradebook Entry: ${subject.name}`}
+                    subtitle={`${exam.name} • Class ${exam.class_name} (${exam.section_name})`}
+                    backUrl="/teacher/exams"
+                    badges={[
+                        { label: `Max Marks: ${totalMarks}`, variant: 'neutral' },
+                        { label: `${students.length} Students`, variant: 'neutral' }
+                    ]}
+                    actionSlot={
                         <button
-                            onClick={() => router.visit('/teacher/exams')}
-                            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={saving}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-2xs"
                         >
-                            <ArrowLeft className="w-4 h-4" />
-                            Back to Exams
+                            <Save className="w-3.5 h-3.5" />
+                            {saving ? 'Saving...' : 'Submit Gradebook'}
                         </button>
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter Marks</h2>
-                            <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
-                                <div>
-                                    <span className="font-semibold">Exam:</span> {exam.name}
-                                </div>
-                                <div>
-                                    <span className="font-semibold">Subject:</span> {subject.name}
-                                </div>
-                                <div>
-                                    <span className="font-semibold">Class:</span> {exam.class_name} - {exam.section_name}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <label htmlFor="totalMarks" className="text-sm font-semibold text-gray-900">
-                                    Subject Total Marks:
-                                </label>
-                                <input
-                                    id="totalMarks"
-                                    type="number"
-                                    min="1"
-                                    max="1000"
-                                    step="1"
-                                    value={totalMarks}
-                                    onChange={(e) => setTotalMarks(e.target.value)}
-                                    className="w-32 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                                    required
-                                />
-                                <span className="text-xs text-gray-500">(Enter total marks for this subject)</span>
-                            </div>
+                    }
+                />
+
+                {/* 2. SPREADSHEET GRADEBOOK GRID */}
+                <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                    <div className="p-4 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <Calculator className="w-4 h-4 text-indigo-600" />
+                            <h3 className="text-sm font-semibold text-slate-900">Student Scoring Sheet</h3>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                            <span className="text-slate-500 font-medium">Subject Max Marks:</span>
+                            <input
+                                type="number"
+                                value={totalMarks}
+                                onChange={(e) => setTotalMarks(e.target.value)}
+                                className="w-20 text-xs py-1 px-2 border border-slate-200 rounded-lg text-center font-mono font-bold"
+                            />
                         </div>
                     </div>
 
-                    {/* Marks Entry Form */}
-                    <form onSubmit={handleSubmit}>
-                        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Roll No.</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
-                                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Theory Marks</th>
-                                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Practical Marks</th>
-                                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Total</th>
-                                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Absent</th>
+                    {students && students.length > 0 ? (
+                        <>
+                            {/* Mobile Card Inputs */}
+                            <div className="md:hidden divide-y divide-slate-100">
+                                {students.map((student) => {
+                                    const entry = marks[student.id] || { theory_marks: '', practical_marks: '', is_absent: false };
+                                    const theory = parseFloat(entry.theory_marks) || 0;
+                                    const practical = parseFloat(entry.practical_marks) || 0;
+                                    const totalObtained = entry.is_absent ? 0 : theory + practical;
+
+                                    return (
+                                        <div key={student.id} className="p-3.5 space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <span className="text-xs font-bold text-slate-900">{student.full_name}</span>
+                                                    <span className="text-[11px] text-slate-500 font-mono ml-1.5">Roll #{student.roll_number}</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAbsentToggle(student.id)}
+                                                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                                                        entry.is_absent
+                                                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                    }`}
+                                                >
+                                                    {entry.is_absent ? 'Absent' : 'Mark Absent'}
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-500 mb-0.5">Theory</label>
+                                                    <input
+                                                        type="number"
+                                                        disabled={entry.is_absent}
+                                                        value={entry.theory_marks}
+                                                        onChange={(e) => handleMarkChange(student.id, 'theory_marks', e.target.value)}
+                                                        className="w-full text-xs py-1.5 px-2 border border-slate-200 rounded-lg text-center font-mono font-bold disabled:bg-slate-100"
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-500 mb-0.5">Practical</label>
+                                                    <input
+                                                        type="number"
+                                                        disabled={entry.is_absent}
+                                                        value={entry.practical_marks}
+                                                        onChange={(e) => handleMarkChange(student.id, 'practical_marks', e.target.value)}
+                                                        className="w-full text-xs py-1.5 px-2 border border-slate-200 rounded-lg text-center font-mono font-bold disabled:bg-slate-100"
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-slate-500 mb-0.5">Total</label>
+                                                    <div className="text-xs py-1.5 px-2 border border-slate-100 bg-slate-50 rounded-lg text-center font-mono font-bold text-indigo-700">
+                                                        {entry.is_absent ? 'ABS' : totalObtained}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Desktop High-Density Spreadsheet Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 border-b border-slate-200/80">
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Roll</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Student Name</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Theory Score</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Practical Score</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Calculated Total</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Attendance</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-200">
+                                    <tbody className="divide-y divide-slate-100">
                                         {students.map((student) => {
-                                            const studentMarks = marks[student.id];
-                                            const theory = parseFloat(studentMarks.theory_marks) || 0;
-                                            const practical = parseFloat(studentMarks.practical_marks) || 0;
-                                            const total = studentMarks.is_absent ? 0 : theory + practical;
+                                            const entry = marks[student.id] || { theory_marks: '', practical_marks: '', is_absent: false };
+                                            const theory = parseFloat(entry.theory_marks) || 0;
+                                            const practical = parseFloat(entry.practical_marks) || 0;
+                                            const totalObtained = entry.is_absent ? 0 : theory + practical;
 
                                             return (
-                                                <tr key={student.id} className={`hover:bg-gray-50 transition-colors ${studentMarks.is_absent ? 'bg-red-50' : ''}`}>
-                                                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">{student.roll_number}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900">{student.full_name}</td>
-                                                    <td className="px-6 py-4 text-center">
+                                                <tr key={student.id} className="hover:bg-slate-50/60 transition-colors">
+                                                    <td className="px-4 py-2.5 font-mono font-bold text-slate-800">
+                                                        #{student.roll_number}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 font-semibold text-slate-900">
+                                                        {student.full_name}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-center">
                                                         <input
                                                             type="number"
-                                                            min="0"
-                                                            max={totalMarks}
-                                                            step="0.01"
-                                                            value={studentMarks.theory_marks}
+                                                            step="0.5"
+                                                            disabled={entry.is_absent}
+                                                            value={entry.theory_marks}
                                                             onChange={(e) => handleMarkChange(student.id, 'theory_marks', e.target.value)}
-                                                            disabled={studentMarks.is_absent}
-                                                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                                                            className="w-20 text-xs py-1 px-2 border border-slate-200 rounded-lg text-center font-mono font-bold disabled:bg-slate-100"
+                                                            placeholder="0"
                                                         />
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-2.5 text-center">
                                                         <input
                                                             type="number"
-                                                            min="0"
-                                                            max={totalMarks}
-                                                            step="0.01"
-                                                            value={studentMarks.practical_marks}
+                                                            step="0.5"
+                                                            disabled={entry.is_absent}
+                                                            value={entry.practical_marks}
                                                             onChange={(e) => handleMarkChange(student.id, 'practical_marks', e.target.value)}
-                                                            disabled={studentMarks.is_absent}
-                                                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                                                            className="w-20 text-xs py-1 px-2 border border-slate-200 rounded-lg text-center font-mono font-bold disabled:bg-slate-100"
+                                                            placeholder="0"
                                                         />
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                                            studentMarks.is_absent
-                                                                ? 'bg-red-100 text-red-800'
-                                                                : 'bg-blue-100 text-blue-800'
-                                                        }`}>
-                                                            {studentMarks.is_absent ? 'AB' : total.toFixed(2)}
-                                                        </span>
+                                                    <td className="px-4 py-2.5 text-center font-mono font-bold text-indigo-700">
+                                                        {entry.is_absent ? (
+                                                            <span className="text-rose-600 font-bold">ABSENT</span>
+                                                        ) : (
+                                                            totalObtained
+                                                        )}
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-2.5 text-center">
                                                         <button
                                                             type="button"
                                                             onClick={() => handleAbsentToggle(student.id)}
-                                                            className={`p-2 rounded-lg transition-all duration-200 ${
-                                                                studentMarks.is_absent
-                                                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                                                                entry.is_absent
+                                                                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                                                             }`}
                                                         >
-                                                            {studentMarks.is_absent ? <UserX className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
+                                                            {entry.is_absent ? 'Absent' : 'Present'}
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -220,28 +282,32 @@ export default function MarkEntry({ exam, subject, students }: Props) {
                                     </tbody>
                                 </table>
                             </div>
-
-                            {/* Action Buttons */}
-                            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-4 border-t border-gray-200">
-                                <button
-                                    type="button"
-                                    onClick={() => router.visit('/teacher/exams')}
-                                    className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    {saving ? 'Saving...' : 'Save Marks'}
-                                </button>
-                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Calculator className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-slate-600">No students enrolled in this section</p>
                         </div>
-                    </form>
-                </div>
+                    )}
+
+                    <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50/60">
+                        <button
+                            type="button"
+                            onClick={() => router.visit('/teacher/exams')}
+                            className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-white transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-2xs"
+                        >
+                            <Save className="w-3.5 h-3.5" />
+                            {saving ? 'Saving...' : 'Save & Submit Marks'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </AuthenticatedLayout>
     );

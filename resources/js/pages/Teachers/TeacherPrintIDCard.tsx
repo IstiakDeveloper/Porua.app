@@ -1,6 +1,6 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
-import { User, Mail, Phone, Calendar, Building2, UserCircle, Heart, X } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Building2, UserCircle, Heart, X, ShieldCheck } from 'lucide-react';
 import { useInstitute } from '@/hooks/useInstitute';
 
 interface Teacher {
@@ -29,9 +29,10 @@ export default function TeacherPrintIDCard({ teacher }: Props) {
 
     React.useEffect(() => {
         // Auto print when page loads
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             window.print();
         }, 500);
+        return () => clearTimeout(timer);
     }, []);
 
     const getTeacherImageUrl = (photo: string | null) => {
@@ -52,7 +53,7 @@ export default function TeacherPrintIDCard({ teacher }: Props) {
 
     return (
         <>
-            <Head title={`${teacher.full_name} - ID Card`} />
+            <Head title={`${teacher.full_name} - Faculty ID Card`} />
 
             <style>{`
                 @media print {
@@ -82,124 +83,136 @@ export default function TeacherPrintIDCard({ teacher }: Props) {
                         padding: 0 !important;
                     }
 
-                    .close-button {
+                    .close-button, .screen-controls {
                         display: none !important;
                     }
                 }
 
                 @media screen {
                     body {
-                        background: #f3f4f6;
+                        background: #f1f5f9;
                     }
                 }
 
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                 }
             `}</style>
 
             {/* Close Button - Only visible on screen */}
-            <button
-                onClick={() => window.close()}
-                className="close-button fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white rounded-full p-2 shadow-lg transition-colors z-50"
-                title="Close"
-            >
-                <X className="w-5 h-5" />
-            </button>
+            <div className="screen-controls fixed top-4 right-4 flex items-center gap-2 z-50">
+                <button
+                    onClick={() => window.print()}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-1.5 text-xs font-semibold shadow-md transition-colors"
+                >
+                    Print ID Card
+                </button>
+                <button
+                    onClick={() => window.close()}
+                    className="close-button bg-slate-800 hover:bg-slate-900 text-white rounded-full p-2 shadow-md transition-colors"
+                    title="Close"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
 
-            <div className="print-container min-h-screen bg-gray-100 flex items-center justify-center p-4">
-                <div style={{ width: '8.5cm', height: '13.5cm' }} className="bg-white rounded-xl shadow-2xl overflow-hidden border-[3px] border-blue-600 relative">
-                    {/* Card Header */}
-                    <div style={{ background: 'linear-gradient(to right, #2563eb, #0891b2)' }} className="text-white p-3 text-center">
-                        <h2 className="text-base font-bold mb-0.5">{institute.type === 'coaching' ? 'FACULTY ID CARD' : 'TEACHER ID CARD'}</h2>
-                        <p className="text-[9px] opacity-90 truncate font-medium">{institute.name}</p>
+            <div className="print-container min-h-screen bg-slate-100 flex items-center justify-center p-4">
+                <div
+                    style={{ width: '8.5cm', height: '13.5cm' }}
+                    className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-300 relative flex flex-col justify-between"
+                >
+                    {/* Top Institutional Banner */}
+                    <div className="bg-slate-900 text-white pt-4 pb-12 px-3 text-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/60 to-slate-900/90 pointer-events-none" />
+                        <div className="relative z-10">
+                            <p className="text-[10px] uppercase font-bold tracking-widest text-indigo-300">
+                                {institute.type === 'coaching' ? 'Faculty Identity Card' : 'Faculty ID Card'}
+                            </p>
+                            <h2 className="text-xs font-extrabold text-white mt-0.5 truncate px-2">
+                                {institute.name}
+                            </h2>
+                        </div>
                     </div>
 
-                    {/* Photo Section */}
-                    <div className="flex justify-center -mt-10 mb-3 relative z-10">
+                    {/* Photo Container */}
+                    <div className="flex justify-center -mt-10 relative z-20">
                         {teacher.photo && !imageError ? (
                             <img
                                 src={getTeacherImageUrl(teacher.photo) || ''}
                                 alt={teacher.full_name}
-                                className="w-20 h-20 rounded-full object-cover border-[3px] border-white shadow-lg bg-white"
+                                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md bg-white ring-1 ring-slate-200"
                                 onError={() => setImageError(true)}
                             />
                         ) : (
-                            <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-[3px] border-white shadow-lg">
-                                <User className="w-10 h-10 text-gray-400" />
+                            <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center border-4 border-white shadow-md ring-1 ring-slate-200">
+                                <User className="w-10 h-10 text-slate-400" />
                             </div>
                         )}
                     </div>
 
-                    {/* Teacher Name */}
-                    <div className="text-center px-4 pb-2 border-b-2 border-gray-200">
-                        <h3 className="text-lg font-bold text-gray-900 leading-tight">{teacher.full_name}</h3>
-                        <p className="text-xs text-gray-600 mt-0.5">{teacher.designation || 'Teacher'}</p>
+                    {/* Teacher Identity Name */}
+                    <div className="text-center px-4 pt-1.5 pb-2 border-b border-slate-100">
+                        <h3 className="text-sm font-bold text-slate-900 leading-snug">{teacher.full_name}</h3>
+                        <p className="text-[11px] font-medium text-indigo-600 mt-0.5">
+                            {teacher.designation || 'Faculty Member'}
+                        </p>
                     </div>
 
-                    {/* Teacher Info */}
-                    <div className="px-4 pt-2 pb-12">
-                        <div className="space-y-1.5">
-                            {/* Employee ID */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-gray-100">
-                                <UserCircle className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] text-gray-500 leading-none">Employee ID</p>
-                                    <p className="text-xs font-bold text-gray-900 leading-tight mt-0.5">{teacher.employee_id}</p>
-                                </div>
-                            </div>
+                    {/* Credential Data Rows */}
+                    <div className="px-4 py-2 flex-1 space-y-1.5 text-slate-800">
+                        <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase">Employee ID</span>
+                            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
+                                {teacher.employee_id}
+                            </span>
+                        </div>
 
-                            {/* Department */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-gray-100">
-                                <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] text-gray-500 leading-none">Department</p>
-                                    <p className="text-xs font-semibold text-gray-900 leading-tight mt-0.5">{teacher.department || 'N/A'}</p>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase">Department</span>
+                            <span className="font-semibold text-slate-800 text-[11px]">{teacher.department || 'General'}</span>
+                        </div>
 
-                            {/* Phone */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-gray-100">
-                                <Phone className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] text-gray-500 leading-none">Phone</p>
-                                    <p className="text-xs font-semibold text-gray-900 leading-tight mt-0.5">{teacher.phone}</p>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase">Phone</span>
+                            <span className="font-semibold text-slate-800 text-[11px]">{teacher.phone || '—'}</span>
+                        </div>
 
-                            {/* Email */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-gray-100">
-                                <Mail className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] text-gray-500 leading-none">Email</p>
-                                    <p className="text-[10px] font-semibold text-gray-900 leading-tight mt-0.5 break-all">{teacher.email}</p>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase">Blood Group</span>
+                            <span className="font-bold text-rose-600 text-[11px]">{teacher.blood_group || 'N/A'}</span>
+                        </div>
 
-                            {/* Blood Group */}
-                            <div className="flex items-center gap-2 py-1.5 border-b border-gray-100">
-                                <Heart className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] text-gray-500 leading-none">Blood Group</p>
-                                    <p className="text-xs font-semibold text-gray-900 leading-tight mt-0.5">{teacher.blood_group || 'N/A'}</p>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase">Joining Date</span>
+                            <span className="font-medium text-slate-700 text-[11px]">{formatDate(teacher.joining_date)}</span>
+                        </div>
+                    </div>
 
-                            {/* Joining Date */}
-                            <div className="flex items-center gap-2 py-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] text-gray-500 leading-none">Joining Date</p>
-                                    <p className="text-xs font-semibold text-gray-900 leading-tight mt-0.5">{formatDate(teacher.joining_date)}</p>
-                                </div>
+                    {/* Signature Section */}
+                    <div className="px-5 pb-3 pt-1 flex items-end justify-between">
+                        <div className="text-center">
+                            <div className="h-6 flex items-end justify-center">
+                                <span className="text-[9px] font-script italic text-slate-500">Holder</span>
+                            </div>
+                            <div className="border-t border-slate-400 w-16 pt-0.5">
+                                <span className="text-[8px] text-slate-400 uppercase font-semibold">Teacher</span>
+                            </div>
+                        </div>
+
+                        <div className="text-center">
+                            <div className="h-6 flex items-end justify-center">
+                                <ShieldCheck className="w-5 h-5 text-indigo-700 opacity-60" />
+                            </div>
+                            <div className="border-t border-slate-400 w-20 pt-0.5">
+                                <span className="text-[8px] text-slate-400 uppercase font-semibold">Principal Seal</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Card Footer */}
-                    <div style={{ background: 'linear-gradient(to right, #2563eb, #0891b2)' }} className="absolute bottom-0 left-0 right-0 text-white py-2 text-center">
-                        <p className="text-[10px] font-bold tracking-wide">
-                            {teacher.status === 'active' ? 'AUTHORIZED PERSONNEL' : teacher.status.toUpperCase()}
+                    {/* Card Footer Bar */}
+                    <div className="bg-slate-900 text-white py-1.5 px-3 text-center">
+                        <p className="text-[9px] font-bold tracking-wider text-slate-300">
+                            {teacher.status === 'active' ? 'OFFICIAL FACULTY PASS' : teacher.status.toUpperCase()}
                         </p>
                     </div>
                 </div>

@@ -10,6 +10,7 @@ import {
     Users,
     Award,
     Trophy,
+    Megaphone,
 } from 'lucide-react';
 import { useTerminology } from '@/hooks/useTerminology';
 import { triggerHaptic } from '@/utils/haptics';
@@ -20,7 +21,10 @@ interface MobileBottomNavProps {
 }
 
 export default function MobileBottomNav({ onOpenMenu, isMobileMenuOpen = false }: MobileBottomNavProps) {
-    const { url, props } = usePage<{ auth?: { user?: { roles?: Array<{ name: string }> } } }>();
+    const { url, props } = usePage<{
+        auth?: { user?: { roles?: Array<{ name: string }> } };
+        parentNav?: { urgentNotices?: number; unreadMessages?: number } | null;
+    }>();
     const terminology = useTerminology();
     const roles = props.auth?.user?.roles?.map((r) => r.name) || [];
 
@@ -43,9 +47,9 @@ export default function MobileBottomNav({ onOpenMenu, isMobileMenuOpen = false }
     let Tab2Icon = GraduationCap;
 
     if (isParent) {
-        tab2Href = '/parent/children';
-        tab2Title = 'Children';
-        Tab2Icon = Users;
+        tab2Href = '/parent/attendance';
+        tab2Title = 'Attendance';
+        Tab2Icon = ClipboardCheck;
     } else if (isStudent) {
         tab2Href = '/student/attendance';
         tab2Title = 'Attendance';
@@ -81,9 +85,9 @@ export default function MobileBottomNav({ onOpenMenu, isMobileMenuOpen = false }
     let Tab4Icon = ClipboardCheck;
 
     if (isParent) {
-        tab4Href = '/parent/exams';
-        tab4Title = 'Results';
-        Tab4Icon = Award;
+        tab4Href = '/parent/notices';
+        tab4Title = 'Notices';
+        Tab4Icon = Megaphone;
     } else if (isStudent) {
         tab4Href = '/student/results';
         tab4Title = 'Results';
@@ -157,7 +161,7 @@ export default function MobileBottomNav({ onOpenMenu, isMobileMenuOpen = false }
                 <Link
                     href={tab4Href}
                     onClick={() => triggerHaptic(8)}
-                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+                    className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
                         isCurrent(tab4Href)
                             ? 'text-emerald-700 font-bold scale-105'
                             : 'text-slate-500 hover:text-slate-800'
@@ -167,6 +171,11 @@ export default function MobileBottomNav({ onOpenMenu, isMobileMenuOpen = false }
                         <Tab4Icon className="w-5 h-5" />
                     </div>
                     <span className="text-[10px] mt-0.5 tracking-tight">{tab4Title}</span>
+                    {isParent && (props.parentNav?.urgentNotices ?? 0) > 0 && (
+                        <span className="absolute top-0 right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold leading-4 text-center">
+                            {props.parentNav?.urgentNotices}
+                        </span>
+                    )}
                 </Link>
 
                 {/* 5. More / Menu Drawer Trigger */}

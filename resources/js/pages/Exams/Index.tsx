@@ -22,6 +22,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { Exam, PaginatedData, ExamFilters, AcademicYear } from '@/types/exam';
+import { formatWhen } from '@/utils/datetime';
 
 interface IndexProps {
     exams: PaginatedData<Exam>;
@@ -287,14 +288,14 @@ export default function Index({ exams, filters, academicYears }: IndexProps) {
                                             <span className="text-slate-400 block text-[10px] uppercase font-semibold">Date Span</span>
                                             <span className="font-medium text-slate-700 flex items-center gap-1 mt-0.5">
                                                 <Calendar className="w-3 h-3 text-slate-400" />
-                                                {exam.start_date || 'TBD'} → {exam.end_date || 'TBD'}
+                                                {exam.start_date ? formatWhen(exam.start_date) : 'TBD'} → {exam.end_date ? formatWhen(exam.end_date) : 'TBD'}
                                             </span>
                                         </div>
                                         <div>
                                             <span className="text-slate-400 block text-[10px] uppercase font-semibold">Result Date</span>
                                             <span className="font-medium text-emerald-700 flex items-center gap-1 mt-0.5">
                                                 <Trophy className="w-3 h-3 text-emerald-600" />
-                                                {exam.result_publish_date || 'Not set'}
+                                                {exam.result_publish_date ? formatWhen(exam.result_publish_date) : 'Not set'}
                                             </span>
                                         </div>
                                     </div>
@@ -394,7 +395,7 @@ export default function Index({ exams, filters, academicYears }: IndexProps) {
                                                 <div className="flex items-center gap-1.5">
                                                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                                     <span>
-                                                        {exam.start_date || 'TBD'} → {exam.end_date || 'TBD'}
+                                                        {exam.start_date ? formatWhen(exam.start_date) : 'TBD'} → {exam.end_date ? formatWhen(exam.end_date) : 'TBD'}
                                                     </span>
                                                 </div>
                                             </td>
@@ -402,7 +403,7 @@ export default function Index({ exams, filters, academicYears }: IndexProps) {
                                                 {exam.result_publish_date ? (
                                                     <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
                                                         <Trophy className="w-3 h-3 text-emerald-600" />
-                                                        {exam.result_publish_date}
+                                                        {formatWhen(exam.result_publish_date)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-400 italic">Not set</span>

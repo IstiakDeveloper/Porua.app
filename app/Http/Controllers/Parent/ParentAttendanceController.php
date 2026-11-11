@@ -3,45 +3,33 @@
 namespace App\Http\Controllers\Parent;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudentParent;
-use App\Models\Student;
 use App\Models\StudentAttendance;
+use App\Support\ParentPortal;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class ParentAttendanceController extends Controller
 {
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
+        $parent = ParentPortal::parent($user);
 
         $studentId = $request->input('student_id');
         $date = $request->input('date', Carbon::now()->format('Y-m-d'));
 
-        // Get all children for dropdown (direct parent_id or pivot)
-        $children = Student::where('parent_id', $parent->id)
-            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
-            ->with(['schoolClass', 'section'])
-            ->get();
+        $children = ParentPortal::children($parent);
+        $contacts = ParentPortal::contacts($children, $user->id);
 
-        if (!$studentId) {
+        if (! $studentId) {
             $student = $children->first();
             $studentId = $student?->id;
         } else {
             $student = $children->firstWhere('id', (int) $studentId);
         }
 
-        if (!$student) {
+        if (! $student) {
             return Inertia::render('Parent/Attendance/Index', [
                 'student' => null,
                 'children' => [],
@@ -53,6 +41,7 @@ class ParentAttendanceController extends Controller
                 'yearlySummary' => [
                     'present' => 0, 'absent' => 0, 'late' => 0, 'total_days' => 0,
                 ],
+                'contact' => null,
             ]);
         }
 
@@ -96,10 +85,8 @@ class ParentAttendanceController extends Controller
                 'class_name' => $student->schoolClass->name ?? 'N/A',
                 'section_name' => $student->section->name ?? 'N/A',
             ],
-            'children' => $children->map(fn($c) => [
-                'id' => $c->id,
-                'full_name' => $c->full_name,
-            ]),
+            'children' => $children->map(fn ($c) => ParentPortal::childOption($c))->values(),
+            'contact' => collect($contacts)->firstWhere('student_id', $student->id),
             'selectedDate' => $date,
             'attendanceRecord' => $attendanceRecord ? [
                 'id' => $attendanceRecord->id,

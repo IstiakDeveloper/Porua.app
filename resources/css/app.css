@@ -38,6 +38,12 @@ html, body {
     button, a, input, select {
         touch-action: manipulation;
     }
+
+    main.parent-family-layout input,
+    main.parent-family-layout select,
+    main.parent-family-layout textarea {
+        font-size: 16px;
+    }
 }
 
 

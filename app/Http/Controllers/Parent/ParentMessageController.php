@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Parent;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudentParent;
 use App\Models\Message;
+use App\Support\ParentPortal;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ParentMessageController extends Controller
@@ -13,15 +14,9 @@ class ParentMessageController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
+        $parent = ParentPortal::parent($user);
+        $children = ParentPortal::children($parent);
+        $contacts = ParentPortal::contacts($children, $user->id);
 
         $search = $request->input('search');
 
@@ -31,7 +26,7 @@ class ParentMessageController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('subject', 'like', "%{$search}%")
-                      ->orWhere('message', 'like', "%{$search}%");
+                        ->orWhere('message', 'like', "%{$search}%");
                 });
             })
             ->orderBy('created_at', 'desc')
@@ -58,7 +53,7 @@ class ParentMessageController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('subject', 'like', "%{$search}%")
-                      ->orWhere('message', 'like', "%{$search}%");
+                        ->orWhere('message', 'like', "%{$search}%");
                 });
             })
             ->orderBy('created_at', 'desc')
@@ -91,6 +86,7 @@ class ParentMessageController extends Controller
             'inbox' => $inbox,
             'sent' => $sent,
             'unreadCount' => $unreadCount,
+            'contacts' => $contacts,
         ]);
     }
 
@@ -131,10 +127,16 @@ class ParentMessageController extends Controller
     {
         $user = $request->user();
 
+        $parent = ParentPortal::parent($user);
+        $contacts = ParentPortal::contacts(ParentPortal::children($parent), $user->id);
+        $allowed = ParentPortal::allowedReceiverIds($contacts);
+
         $validated = $request->validate([
-            'receiver_id' => 'required|exists:users,id',
+            'receiver_id' => ['required', 'integer', Rule::in($allowed)],
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
+        ], [
+            'receiver_id.in' => 'Choose the class teacher or the school office.',
         ]);
 
         Message::create([
@@ -145,6 +147,6 @@ class ParentMessageController extends Controller
             'is_read' => false,
         ]);
 
-        return redirect()->route('parent.messages.index')->with('success', 'Message sent successfully.');
+        return back()->with('success', 'Message sent successfully.');
     }
 }

@@ -16,6 +16,7 @@ class Exam extends Model
         'exam_type',
         'start_date',
         'end_date',
+        'result_publish_date',
         'description',
         'status',
         'is_published',
@@ -27,6 +28,7 @@ class Exam extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'result_publish_date' => 'date',
             'is_published' => 'boolean',
             'published_at' => 'datetime',
         ];

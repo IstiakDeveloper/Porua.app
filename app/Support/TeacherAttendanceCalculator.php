@@ -76,8 +76,12 @@ class TeacherAttendanceCalculator
         $outTime = $record?->out_time;
 
         // If out_time is within 60 minutes of in_time, do not consider it a valid checkout
-        if ($inTime && $outTime && Carbon::parse($inTime)->diffInMinutes(Carbon::parse($outTime)) < 60) {
-            $outTime = null;
+        if ($inTime && $outTime) {
+            $inCarbon = Carbon::parse(Carbon::parse($inTime)->format('H:i:s'));
+            $outCarbon = Carbon::parse(Carbon::parse($outTime)->format('H:i:s'));
+            if ($inCarbon->diffInMinutes($outCarbon, false) < 60) {
+                $outTime = null;
+            }
         }
 
         $status = self::determineStatus($date, $record, $settings, $weekendDays, $holidayMap, $isFuture, $personType, $outTime);
@@ -173,8 +177,8 @@ class TeacherAttendanceCalculator
             return null;
         }
 
-        $start = Carbon::parse($inTime);
-        $end = Carbon::parse($outTime);
+        $start = Carbon::parse('2000-01-01 '.Carbon::parse($inTime)->format('H:i:s'));
+        $end = Carbon::parse('2000-01-01 '.Carbon::parse($outTime)->format('H:i:s'));
 
         if ($end->lt($start)) {
             return null;
@@ -227,7 +231,7 @@ class TeacherAttendanceCalculator
         $lateTime = $personType === 'student' ? $settings?->student_late_time : $settings?->teacher_late_time;
         if ($status === 'late' && $inTime && $lateTime) {
             $cutoff = Carbon::parse($date.' '.$lateTime);
-            $actual = Carbon::parse($inTime);
+            $actual = Carbon::parse($date.' '.Carbon::parse($inTime)->format('H:i:s'));
             if ($actual->gt($cutoff)) {
                 $parts[] = 'Late by '.self::minutesLabel($cutoff->diffInMinutes($actual));
             } else {
@@ -239,7 +243,7 @@ class TeacherAttendanceCalculator
 
         if ($status === 'early_leave' && $outTime && $settings?->teacher_out_time) {
             $expected = Carbon::parse($date.' '.$settings->teacher_out_time);
-            $actual = Carbon::parse($outTime);
+            $actual = Carbon::parse($date.' '.Carbon::parse($outTime)->format('H:i:s'));
             if ($actual->lt($expected)) {
                 $parts[] = 'Left early by '.self::minutesLabel($actual->diffInMinutes($expected));
             } else {

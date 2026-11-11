@@ -1,8 +1,8 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Calendar, Download, AlertCircle, FileText } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/Components/Card';
+import { ArrowLeft, Calendar, Download, FileText, User } from 'lucide-react';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Notice {
     id: number;
@@ -23,127 +23,79 @@ interface Props {
 
 export default function Show({ notice }: Props) {
     const getPriorityBadge = (priority: string) => {
-        switch (priority.toLowerCase()) {
+        switch ((priority || '').toLowerCase()) {
             case 'urgent':
-                return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-600 text-white"><AlertCircle className="mr-1 h-3 w-3" />Urgent</span>;
+                return 'bg-rose-50 text-rose-700 border-rose-200';
             case 'high':
-                return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-600 text-white">High</span>;
-            case 'medium':
-                return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-white">Medium</span>;
-            case 'low':
-                return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border border-gray-300 text-gray-700">Low</span>;
+                return 'bg-amber-50 text-amber-700 border-amber-200';
             default:
-                return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{priority}</span>;
+                return 'bg-blue-50 text-blue-700 border-blue-200';
         }
     };
 
-    const getTypeBadge = (type: string) => {
-        const colors: Record<string, string> = {
-            'Academic': 'bg-blue-600',
-            'Administrative': 'bg-purple-600',
-            'Event': 'bg-green-600',
-            'Holiday': 'bg-yellow-600',
-            'Exam': 'bg-red-600',
-            'General': 'bg-gray-600'
-        };
-        return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${colors[type] || 'bg-gray-600'}`}>{type}</span>;
-    };
-
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Notice Details
-                    </h2>
-                    <Link
-                        href="/student/notices"
-                        className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Notices
-                    </Link>
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title={notice.title} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                    <Card>
-                        <CardHeader>
-                            <div className="space-y-4">
-                                <div className="flex flex-wrap gap-2">
-                                    {getTypeBadge(notice.type)}
-                                    {getPriorityBadge(notice.priority)}
-                                </div>
-                                <CardTitle className="text-2xl">{notice.title}</CardTitle>
-                                <div className="flex items-center gap-6 text-sm text-gray-500">
-                                    <div className="flex items-center">
-                                        <Calendar className="mr-2 h-4 w-4" />
-                                        {notice.created_at}
-                                    </div>
-                                    <div>
-                                        By: {notice.created_by}
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
+            <div className="space-y-4 pb-8 max-w-4xl mx-auto">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Notice Circular"
+                    subtitle={`Published on ${notice.created_at} by ${notice.created_by}`}
+                    backUrl="/student/notices"
+                    badges={[
+                        { label: notice.type, variant: 'neutral' },
+                        { label: notice.priority.toUpperCase(), variant: notice.priority.toLowerCase() === 'urgent' ? 'neutral' : 'neutral' }
+                    ]}
+                />
 
-                        <CardContent>
-                            <div className="space-y-6">
-                                {/* Validity Period */}
-                                {(notice.valid_from || notice.valid_to) && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                        <div className="flex items-start">
-                                            <AlertCircle className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
-                                            <div>
-                                                <h4 className="font-medium text-blue-900 mb-1">Validity Period</h4>
-                                                <div className="text-sm text-blue-700">
-                                                    {notice.valid_from && <div>Valid From: {notice.valid_from}</div>}
-                                                    {notice.valid_to && <div>Valid Until: {notice.valid_to}</div>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                {/* 2. NOTICE DETAIL CARD */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-5 sm:p-7 shadow-2xs space-y-5">
+                    <div className="border-b border-slate-100 pb-4">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wider ${getPriorityBadge(notice.priority)}`}>
+                                {notice.priority}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                {notice.type}
+                            </span>
+                        </div>
+                        <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-snug">
+                            {notice.title}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2">
+                            <span className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                {notice.created_at}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <User className="w-3.5 h-3.5 text-slate-400" />
+                                Author: {notice.created_by}
+                            </span>
+                        </div>
+                    </div>
 
-                                {/* Content */}
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Notice Content</h3>
-                                    <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
-                                        {notice.content}
-                                    </div>
-                                </div>
+                    {/* Notice Body */}
+                    <div className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line py-2">
+                        {notice.content}
+                    </div>
 
-                                {/* Attachment */}
-                                {notice.attachment && (
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Attachment</h3>
-                                        <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
-                                            <div className="flex items-center">
-                                                <FileText className="h-8 w-8 text-gray-400 mr-3" />
-                                                <div>
-                                                    <p className="font-medium text-gray-900">
-                                                        {notice.attachment.split('/').pop()}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">Click to download</p>
-                                                </div>
-                                            </div>
-                                            <a
-                                                href={`/storage/${notice.attachment}`}
-                                                download
-                                                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all"
-                                            >
-                                                <Download className="mr-2 h-4 w-4" />
-                                                Download
-                                            </a>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Attachment if present */}
+                    {notice.attachment && (
+                        <div className="pt-4 border-t border-slate-100">
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Attached Documents</h4>
+                            <a
+                                href={notice.attachment}
+                                target="_blank"
+                                rel="noreferrer"
+                                download
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-indigo-700 transition-colors"
+                            >
+                                <Download className="w-4 h-4 text-indigo-600" />
+                                Download Attached File
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TeacherAttendanceCalculator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,12 +32,33 @@ class TeacherAttendance extends Model
     protected function casts(): array
     {
         return [
-            'date' => 'date',
+            'date' => 'date:Y-m-d',
             'in_time' => 'datetime',
             'out_time' => 'datetime',
             'punch_time' => 'datetime',
             'punch_state' => 'integer',
         ];
+    }
+
+    protected $appends = [
+        'check_in_time',
+        'check_out_time',
+        'remarks',
+    ];
+
+    public function getCheckInTimeAttribute(): ?string
+    {
+        return TeacherAttendanceCalculator::formatTime($this->in_time ?? $this->punch_time);
+    }
+
+    public function getCheckOutTimeAttribute(): ?string
+    {
+        return TeacherAttendanceCalculator::formatTime($this->out_time);
+    }
+
+    public function getRemarksAttribute(): ?string
+    {
+        return $this->reason;
     }
 
     public function teacher()

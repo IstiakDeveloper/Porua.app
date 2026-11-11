@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Parent;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudentParent;
-use App\Models\Student;
+use App\Support\ParentPortal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,20 +15,8 @@ class ParentProfileController extends Controller
     public function show(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
-
-        $children = Student::where('parent_id', $parent->id)
-            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
-            ->with(['schoolClass', 'section'])
-            ->get();
+        $parent = ParentPortal::parent($user);
+        $children = ParentPortal::children($parent);
 
         return Inertia::render('Parent/Profile', [
             'parent' => [
@@ -43,36 +30,16 @@ class ParentProfileController extends Controller
                 'phone' => $parent->phone ?? $user->phone ?? '',
                 'email' => $parent->email ?? $user->email,
                 'address' => $parent->address ?? '',
-                'city' => '',
-                'state' => '',
-                'postal_code' => '',
-                'photo' => $parent->photo,
+                'photo' => ParentPortal::photoUrl($parent->photo),
             ],
-            'children' => $children->map(function ($child) {
-                return [
-                    'id' => $child->id,
-                    'full_name' => $child->full_name,
-                    'admission_number' => $child->admission_number,
-                    'photo' => $child->photo,
-                    'class_name' => $child->schoolClass->name ?? 'N/A',
-                    'section_name' => $child->section->name ?? 'N/A',
-                ];
-            }),
+            'children' => $children->map(fn ($child) => ParentPortal::childOption($child))->values(),
         ]);
     }
 
     public function update(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
+        $parent = ParentPortal::parent($user);
 
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:20'],
@@ -102,15 +69,7 @@ class ParentProfileController extends Controller
     public function updatePhoto(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
+        $parent = ParentPortal::parent($user);
 
         $request->validate([
             'photo' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
@@ -136,7 +95,7 @@ class ParentProfileController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
+        if (! Hash::check($validated['current_password'], $user->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 

@@ -5,15 +5,15 @@ import {
     Mail,
     Send,
     Inbox,
-    Reply,
-    Trash2,
     Search,
     PlusCircle,
     User,
     Calendar,
-    Paperclip
+    Paperclip,
+    X,
+    MessageSquare
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Message {
     id: number;
@@ -42,8 +42,8 @@ interface Props {
     }>;
 }
 
-export default function Index({ messages, unread_count, recipients }: Props) {
-    const [activeTab, setActiveTab] = useState('inbox');
+export default function Index({ messages, unread_count = 0, recipients = [] }: Props) {
+    const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
     const [searchTerm, setSearchTerm] = useState('');
     const [showCompose, setShowCompose] = useState(false);
     const [composeData, setComposeData] = useState({
@@ -51,274 +51,232 @@ export default function Index({ messages, unread_count, recipients }: Props) {
         subject: '',
         message: ''
     });
+    const [submitting, setSubmitting] = useState(false);
 
     const handleCompose = (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitting(true);
         router.post('/student/messages', composeData, {
             onSuccess: () => {
                 setShowCompose(false);
                 setComposeData({ receiver_id: '', subject: '', message: '' });
+                setSubmitting(false);
+            },
+            onError: () => {
+                setSubmitting(false);
             }
         });
     };
 
-    const handleReply = (messageId: number) => {
-        router.get(`/student/messages/${messageId}`);
-    };
-
-    const filterMessages = (messageList: Message[]) => {
-        if (!messageList || !Array.isArray(messageList)) return [];
-        return messageList.filter(msg =>
-            msg.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            msg.sender_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            msg.message.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    };
-
-    const MessageCard = ({ message, isSent }: { message: Message; isSent: boolean }) => (
-        <div
-            className={`p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition ${
-                !message.is_read && !isSent ? 'bg-blue-50 border-blue-200' : ''
-            }`}
-            onClick={() => router.get(`/student/messages/${message.id}`)}
-        >
-            <div className="flex items-start justify-between">
-                <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                        <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-gray-500" />
-                            <span className="font-semibold">
-                                {isSent ? message.recipient_name : message.sender_name}
-                            </span>
-                        </div>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-white">
-                            {isSent ? 'To' : 'From'}: {isSent ? message.recipient_name : message.sender_role}
-                        </span>
-                        {!message.is_read && !isSent && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">New</span>
-                        )}
-                        {message.has_attachment && (
-                            <Paperclip className="h-4 w-4 text-gray-500" />
-                        )}
-                    </div>
-
-                    <h4 className="font-semibold text-lg mb-2">{message.subject}</h4>
-
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                        {message.message}
-                    </p>
-
-                    <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span className="flex items-center">
-                            <Calendar className="mr-1 h-3 w-3" />
-                            {message.sent_at}
-                        </span>
-                        {message.read_at && (
-                            <span>Read: {message.read_at}</span>
-                        )}
-                    </div>
-                </div>
-
-                {!isSent && (
-                    <button
-                        className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleReply(message.id);
-                        }}
-                    >
-                        <Reply className="h-4 w-4" />
-                    </button>
-                )}
-            </div>
-        </div>
+    const currentList = activeTab === 'inbox' ? (messages?.inbox || []) : (messages?.sent || []);
+    const filteredMessages = currentList.filter(msg =>
+        msg.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.sender_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.message?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <AuthenticatedLayout>
-            <Head title="Messages" />
+            <Head title="Direct Messaging" />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Header with Compose Button */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900">Messages</h2>
-                            <p className="text-sm text-gray-600 mt-1">Send and receive messages</p>
-                        </div>
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Student Inbox & Messaging"
+                    subtitle="Communicate directly with class teachers and administration"
+                    backUrl="/student/dashboard"
+                    badges={[
+                        { label: `${unread_count} Unread Messages`, variant: unread_count > 0 ? 'success' : 'neutral' }
+                    ]}
+                    actionSlot={
                         <button
-                            onClick={() => setShowCompose(!showCompose)}
-                            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                            type="button"
+                            onClick={() => setShowCompose(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-2xs"
                         >
-                            <PlusCircle className="mr-2 h-5 w-5" />
+                            <PlusCircle className="w-3.5 h-3.5" />
                             Compose Message
                         </button>
+                    }
+                />
+
+                {/* 2. COMPOSE MESSAGE MODAL / DRAWER */}
+                {showCompose && (
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-xl border border-slate-200 p-5 w-full max-w-lg shadow-xl">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <Send className="w-4 h-4 text-indigo-600" />
+                                    New Message to Teacher
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCompose(false)}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCompose} className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">Send To</label>
+                                    <select
+                                        required
+                                        value={composeData.receiver_id}
+                                        onChange={(e) => setComposeData({ ...composeData, receiver_id: e.target.value })}
+                                        className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    >
+                                        <option value="">Select Faculty Member / Teacher</option>
+                                        {recipients.map((r) => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.name} ({r.role})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Brief subject..."
+                                        value={composeData.subject}
+                                        onChange={(e) => setComposeData({ ...composeData, subject: e.target.value })}
+                                        className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">Message Content</label>
+                                    <textarea
+                                        required
+                                        rows={4}
+                                        placeholder="Type your message here..."
+                                        value={composeData.message}
+                                        onChange={(e) => setComposeData({ ...composeData, message: e.target.value })}
+                                        className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    />
+                                </div>
+
+                                <div className="pt-2 flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCompose(false)}
+                                        className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-2xs"
+                                    >
+                                        {submitting ? 'Sending...' : 'Send Message'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                    {/* Compose Message */}
-                    {showCompose && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <Send className="mr-2 h-5 w-5" />
-                                    Compose Message
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <form onSubmit={handleCompose} className="space-y-4">
-                                    <div>
-                                        <label htmlFor="receiver_id" className="block text-sm font-medium text-gray-700 mb-1">Send To</label>
-                                        <select
-                                            id="receiver_id"
-                                            value={composeData.receiver_id}
-                                            onChange={(e) => setComposeData({ ...composeData, receiver_id: e.target.value })}
-                                            required
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="">-- Select Recipient --</option>
-                                            {recipients.map((recipient) => (
-                                                <option key={recipient.id} value={recipient.id}>
-                                                    {recipient.name} ({recipient.role})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <p className="mt-1 text-xs text-gray-500">Select a teacher or admin to send your message</p>
+                )}
+
+                {/* 3. TABS & SEARCH STRIP */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 self-stretch sm:self-auto">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('inbox')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                                activeTab === 'inbox'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            <Inbox className="w-3.5 h-3.5" />
+                            Inbox ({messages?.inbox?.length || 0})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('sent')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                                activeTab === 'sent'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            <Send className="w-3.5 h-3.5" />
+                            Sent ({messages?.sent?.length || 0})
+                        </button>
+                    </div>
+
+                    <div className="relative w-full sm:w-64">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filter conversations..."
+                            className="w-full text-xs py-2 pl-9 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                        />
+                    </div>
+                </div>
+
+                {/* 4. MESSAGES LIST */}
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                    {filteredMessages && filteredMessages.length > 0 ? (
+                        <div className="divide-y divide-slate-100">
+                            {filteredMessages.map((msg) => (
+                                <Link
+                                    key={msg.id}
+                                    href={`/student/messages/${msg.id}`}
+                                    className={`p-4 hover:bg-slate-50/70 transition-colors flex items-start gap-3.5 block group ${
+                                        !msg.is_read && activeTab === 'inbox' ? 'bg-indigo-50/20' : ''
+                                    }`}
+                                >
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold ${
+                                        !msg.is_read && activeTab === 'inbox'
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'bg-slate-100 text-slate-600'
+                                    }`}>
+                                        {(msg.sender_name || 'U').charAt(0).toUpperCase()}
                                     </div>
 
-                                    <div>
-                                        <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                                        <input
-                                            id="subject"
-                                            type="text"
-                                            placeholder="Message subject"
-                                            value={composeData.subject}
-                                            onChange={(e) => setComposeData({ ...composeData, subject: e.target.value })}
-                                            required
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                                        <textarea
-                                            id="message"
-                                            rows={6}
-                                            placeholder="Type your message here..."
-                                            value={composeData.message}
-                                            onChange={(e) => setComposeData({ ...composeData, message: e.target.value })}
-                                            required
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <button type="submit" className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
-                                            <Send className="mr-2 h-4 w-4" />
-                                            Send Message
-                                        </button>
-                                        <button type="button" onClick={() => setShowCompose(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Search Bar */}
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search messages..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Messages Tabs */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>My Messages</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {/* Tab Navigation */}
-                            <div className="border-b border-gray-200 mb-6">
-                                <nav className="flex space-x-4">
-                                    <button
-                                        onClick={() => setActiveTab('inbox')}
-                                        className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                                            activeTab === 'inbox'
-                                                ? 'border-blue-600 text-blue-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        <Inbox className="inline-block mr-2 h-4 w-4" />
-                                        Inbox
-                                        {unread_count > 0 && (
-                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white">
-                                                {unread_count}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                                    {activeTab === 'inbox' ? msg.sender_name : `To: ${msg.recipient_name}`}
+                                                </h4>
+                                                <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                    {msg.sender_role}
+                                                </span>
+                                                {!msg.is_read && activeTab === 'inbox' && (
+                                                    <span className="w-2 h-2 rounded-full bg-indigo-600" title="Unread" />
+                                                )}
+                                            </div>
+                                            <span className="text-[11px] text-slate-400 font-medium">
+                                                {msg.sent_at}
                                             </span>
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('sent')}
-                                        className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                                            activeTab === 'sent'
-                                                ? 'border-blue-600 text-blue-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        <Send className="inline-block mr-2 h-4 w-4" />
-                                        Sent
-                                    </button>
-                                </nav>
-                            </div>
+                                        </div>
 
-                            {/* Tab Content */}
-                            {activeTab === 'inbox' && (
-                                <div className="mt-6">
-                                    {filterMessages(messages.inbox).length > 0 ? (
-                                        <div className="space-y-3">
-                                            {filterMessages(messages.inbox).map((message) => (
-                                                <MessageCard key={message.id} message={message} isSent={false} />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-12">
-                                            <Inbox className="mx-auto h-12 w-12 text-gray-400" />
-                                            <p className="mt-2 text-sm text-gray-600">
-                                                {searchTerm ? 'No messages found' : 'No messages in inbox'}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {activeTab === 'sent' && (
-                                <div className="mt-6">
-                                    {filterMessages(messages.sent).length > 0 ? (
-                                        <div className="space-y-3">
-                                            {filterMessages(messages.sent).map((message) => (
-                                                <MessageCard key={message.id} message={message} isSent={true} />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-12">
-                                            <Send className="mx-auto h-12 w-12 text-gray-400" />
-                                            <p className="mt-2 text-sm text-gray-600">
-                                                {searchTerm ? 'No messages found' : 'No sent messages'}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        <p className="text-xs font-semibold text-slate-800 truncate mb-0.5">
+                                            {msg.subject}
+                                        </p>
+                                        <p className="text-xs text-slate-500 line-clamp-1">
+                                            {msg.message}
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Mail className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-slate-600">No messages in this folder</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

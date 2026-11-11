@@ -1,15 +1,15 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, Link } from '@inertiajs/react';
 import {
     ArrowLeft,
     Mail,
     User,
     Clock,
     Download,
-    Reply,
     Paperclip
 } from 'lucide-react';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Message {
     id: number;
@@ -31,109 +31,61 @@ export default function Show({ message }: Props) {
         <AuthenticatedLayout>
             <Head title={`Message - ${message.subject}`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                    {/* Back Button */}
-                    <button
-                        onClick={() => router.get('/teacher/messages')}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Messages
-                    </button>
+            <div className="space-y-4 pb-8 max-w-4xl mx-auto">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Message Details"
+                    subtitle={`Subject: ${message.subject}`}
+                    backUrl="/teacher/messages"
+                    badges={[
+                        { label: message.read_at ? 'Read' : 'Delivered', variant: 'neutral' }
+                    ]}
+                />
 
-                    {/* Message Card */}
-                    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-200">
-                            <div className="flex items-start justify-between mb-4">
-                                <h1 className="text-2xl font-bold text-gray-900 flex-1 pr-4">
-                                    {message.subject}
-                                </h1>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                    <Mail className="w-4 h-4" />
-                                    {message.read_at ? 'Read' : 'Unread'}
-                                </div>
+                {/* 2. MESSAGE BODY CARD */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-5 sm:p-7 shadow-2xs space-y-5">
+                    {/* Header meta */}
+                    <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold flex items-center justify-center text-sm shrink-0">
+                                {(message.sender_name || 'U').charAt(0).toUpperCase()}
                             </div>
-
-                            {/* Meta Information */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-6 text-sm">
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <User className="w-4 h-4" />
-                                        <span>From: <span className="font-semibold text-gray-900">{message.sender_name}</span></span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <User className="w-4 h-4" />
-                                        <span>To: <span className="font-semibold text-gray-900">{message.receiver_name}</span></span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Clock className="w-4 h-4" />
-                                    <span>Sent: {message.sent_at}</span>
-                                    {message.read_at && (
-                                        <>
-                                            <span className="mx-2">•</span>
-                                            <span>Read: {message.read_at}</span>
-                                        </>
-                                    )}
-                                </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">{message.sender_name}</h3>
+                                <p className="text-xs text-slate-500">
+                                    To: <strong className="text-slate-700 font-medium">{message.receiver_name}</strong>
+                                </p>
                             </div>
                         </div>
 
-                        {/* Message Content */}
-                        <div className="px-8 py-6">
-                            <div className="prose max-w-none">
-                                <div
-                                    className="text-gray-700 leading-relaxed whitespace-pre-wrap"
-                                    dangerouslySetInnerHTML={{ __html: message.message }}
-                                />
-                            </div>
-
-                            {/* Attachment */}
-                            {message.attachment && (
-                                <div className="mt-8 pt-6 border-t border-gray-200">
-                                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                        <Paperclip className="w-5 h-5 text-gray-600" />
-                                        <div className="flex-1">
-                                            <h3 className="text-sm font-semibold text-gray-900">Attachment</h3>
-                                            <p className="text-xs text-gray-500">{message.attachment.split('/').pop()}</p>
-                                        </div>
-                                        <a
-                                            href={`/storage/${message.attachment}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                                        >
-                                            <Download className="w-4 h-4" />
-                                            Download
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer Actions */}
-                        <div className="bg-gray-50 px-8 py-4 border-t border-gray-200">
-                            <div className="flex items-center justify-between">
-                                <button
-                                    onClick={() => router.get('/teacher/messages')}
-                                    className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                                >
-                                    Back to Messages
-                                </button>
-                                <button
-                                    onClick={() => router.get('/teacher/messages/create', {
-                                        receiver_id: message.sender_name
-                                    })}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                                >
-                                    <Reply className="w-4 h-4" />
-                                    Reply
-                                </button>
-                            </div>
-                        </div>
+                        <span className="text-xs text-slate-400 font-medium">
+                            Sent: {message.sent_at}
+                            {message.read_at && ` • Read: ${message.read_at}`}
+                        </span>
                     </div>
+
+                    {/* Message content */}
+                    <div
+                        className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap py-2"
+                        dangerouslySetInnerHTML={{ __html: message.message }}
+                    />
+
+                    {/* Attachment if present */}
+                    {message.attachment && (
+                        <div className="pt-4 border-t border-slate-100">
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Attached Document</h4>
+                            <a
+                                href={message.attachment}
+                                target="_blank"
+                                rel="noreferrer"
+                                download
+                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs text-indigo-700 font-medium"
+                            >
+                                <Download className="w-3.5 h-3.5 text-indigo-600" />
+                                Download Attached File
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

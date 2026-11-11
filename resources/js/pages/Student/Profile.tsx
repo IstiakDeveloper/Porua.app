@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
 import {
     User,
     Mail,
@@ -11,11 +11,16 @@ import {
     Users,
     BookOpen,
     Camera,
-    Edit,
+    Edit3,
     Save,
-    X
+    X,
+    GraduationCap,
+    Shield,
+    CheckCircle2,
+    Building2,
+    ArrowLeft
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Student {
     id: number;
@@ -74,11 +79,11 @@ interface Props {
     parents: Parent[];
 }
 
-export default function Profile({ student, parents }: Props) {
+export default function Profile({ student, parents = [] }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, put, processing, errors, reset } = useForm({
         phone: student.phone || '',
         email: student.email || '',
         present_address: student.present_address || '',
@@ -121,339 +126,325 @@ export default function Profile({ student, parents }: Props) {
         });
     };
 
-    const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | null | undefined }) => (
-        <div className="flex items-start space-x-3 py-3 border-b last:border-b-0">
-            <Icon className="h-5 w-5 text-gray-400 mt-0.5" />
-            <div className="flex-1">
-                <p className="text-sm text-gray-500">{label}</p>
-                <p className="text-sm font-medium text-gray-900">{value || 'N/A'}</p>
-            </div>
+    const InfoRow = ({ label, value, icon: Icon }: { label: string; value: string | null | undefined; icon?: any }) => (
+        <div className="py-2.5 flex items-start justify-between border-b border-slate-100 last:border-b-0 text-xs">
+            <span className="text-slate-500 font-medium flex items-center gap-1.5 shrink-0">
+                {Icon && <Icon className="w-3.5 h-3.5 text-slate-400" />}
+                {label}
+            </span>
+            <span className="text-slate-800 font-semibold text-right break-words pl-4">
+                {value || '—'}
+            </span>
         </div>
     );
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        My Profile
-                    </h2>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        student.status === 'active'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-600 text-white'
-                    }`}>
-                        {student.status}
-                    </span>
-                </div>
-            }
-        >
-            <Head title="My Profile" />
+        <AuthenticatedLayout>
+            <Head title={`Student Profile - ${student.full_name}`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="grid gap-6 md:grid-cols-3">
-                        {/* Profile Picture & Basic Info */}
-                        <div className="md:col-span-1">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Profile Picture</CardTitle>
-                                </CardHeader>
-                                <CardContent className="flex flex-col items-center">
-                                    <div className="relative">
-                                        <div className="h-40 w-40 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
-                                            {photoPreview || student.photo_url ? (
-                                                <img
-                                                    src={photoPreview || student.photo_url!}
-                                                    alt={student.full_name}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                <User className="h-20 w-20 text-gray-400" />
-                                            )}
-                                        </div>
-                                        <label
-                                            htmlFor="photo-upload"
-                                            className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg"
-                                        >
-                                            <Camera className="h-5 w-5" />
-                                        </label>
-                                        <input
-                                            id="photo-upload"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handlePhotoChange}
-                                            className="hidden"
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Student Profile"
+                    subtitle="Personal details, guardian connections, and academic dossier"
+                    backUrl="/student/dashboard"
+                    badges={[
+                        { label: student.academic_year, variant: 'neutral' },
+                        { label: student.status === 'active' ? 'Active Enrolment' : student.status, variant: student.status === 'active' ? 'success' : 'neutral' }
+                    ]}
+                />
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {/* LEFT COLUMN: IDENTITY & AVATAR CARD (4 COLS) */}
+                    <div className="lg:col-span-4 space-y-4">
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs text-center">
+                            <div className="relative inline-block mx-auto mb-3">
+                                <div className="w-28 h-28 rounded-2xl bg-indigo-50 border-2 border-slate-200 overflow-hidden flex items-center justify-center shadow-xs">
+                                    {photoPreview || student.photo_url ? (
+                                        <img
+                                            src={photoPreview || student.photo_url!}
+                                            alt={student.full_name}
+                                            className="w-full h-full object-cover"
                                         />
-                                    </div>
-
-                                    {photoPreview && (
-                                        <div className="mt-4 flex space-x-2">
-                                            <button
-                                                onClick={handlePhotoUpload}
-                                                disabled={photoForm.processing}
-                                                className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                Upload
-                                            </button>
-                                            <button
-                                                onClick={() => setPhotoPreview(null)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
+                                    ) : (
+                                        <User className="w-12 h-12 text-indigo-400" />
                                     )}
+                                </div>
+                                <label
+                                    htmlFor="student-photo-upload"
+                                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center cursor-pointer hover:bg-indigo-700 shadow-xs transition-colors"
+                                    title="Change Photo"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                </label>
+                                <input
+                                    id="student-photo-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handlePhotoChange}
+                                    className="hidden"
+                                />
+                            </div>
 
-                                    <div className="mt-6 text-center">
-                                        <h3 className="text-xl font-bold text-gray-900">{student.full_name}</h3>
-                                        <p className="text-sm text-gray-600">
-                                            Class {student.class_name} - {student.section_name}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Roll: {student.roll_number} | ID: {student.admission_number}
-                                        </p>
-                                    </div>
+                            {photoPreview && (
+                                <div className="mb-4 flex items-center justify-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handlePhotoUpload}
+                                        disabled={photoForm.processing}
+                                        className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                    >
+                                        Save Photo
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPhotoPreview(null)}
+                                        className="px-3 py-1 text-xs font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
 
-                                    <div className="mt-4 w-full space-y-2">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-gray-600">Blood Group:</span>
-                                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border border-gray-300 text-gray-700">{student.blood_group}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-gray-600">Gender:</span>
-                                            <span className="font-medium">{student.gender}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-gray-600">Religion:</span>
-                                            <span className="font-medium">{student.religion}</span>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                {student.full_name}
+                            </h2>
+                            {student.first_name_bengali && (
+                                <p className="text-xs text-slate-500 font-bengali">
+                                    {student.first_name_bengali} {student.last_name_bengali}
+                                </p>
+                            )}
+
+                            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <GraduationCap className="w-3 h-3" />
+                                    Class {student.class_name} ({student.section_name})
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    Roll #{student.roll_number}
+                                </span>
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-slate-100 space-y-1.5 text-left text-xs">
+                                <div className="flex justify-between py-1">
+                                    <span className="text-slate-500">Student ID / Adm No:</span>
+                                    <span className="font-semibold text-slate-800">{student.admission_number}</span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <span className="text-slate-500">Blood Group:</span>
+                                    <span className="font-semibold text-rose-600">{student.blood_group || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <span className="text-slate-500">Gender / Religion:</span>
+                                    <span className="font-semibold text-slate-800">{student.gender} • {student.religion}</span>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Detailed Information */}
-                        <div className="md:col-span-2 space-y-6">
-                            {/* Personal Information */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center justify-between">
-                                        <span className="flex items-center">
-                                            <User className="mr-2 h-5 w-5" />
-                                            Personal Information
-                                        </span>
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <InfoRow icon={Calendar} label="Date of Birth" value={student.date_of_birth} />
-                                        <InfoRow icon={User} label="Birth Certificate No" value={student.birth_certificate_no} />
-                                        <InfoRow icon={MapPin} label="Nationality" value={student.nationality} />
-                                        <InfoRow icon={Calendar} label="Admission Date" value={student.admission_date} />
-                                    </div>
-                                </CardContent>
-                            </Card>
+                        {/* ACADEMIC SUMMARY CARD */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
+                            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                                Academic Details
+                            </h3>
+                            <div className="space-y-1 text-xs">
+                                <InfoRow label="Academic Session" value={student.academic_year} />
+                                <InfoRow label="Admission Date" value={student.admission_date} />
+                                <InfoRow label="Previous School" value={student.previous_school} />
+                                <InfoRow label="Previous Class" value={student.previous_class} />
+                            </div>
+                        </div>
+                    </div>
 
-                            {/* Contact Information - Editable */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center justify-between">
-                                        <span className="flex items-center">
-                                            <Phone className="mr-2 h-5 w-5" />
-                                            Contact Information
-                                        </span>
-                                        {!isEditing ? (
-                                            <button
-                                                onClick={() => setIsEditing(true)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                            >
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => setIsEditing(false)}
-                                                className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                            >
-                                                <X className="mr-2 h-4 w-4" />
-                                                Cancel
-                                            </button>
-                                        )}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {isEditing ? (
-                                        <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* RIGHT COLUMN: CONTACT, MEDICAL & GUARDIAN SECTIONS (8 COLS) */}
+                    <div className="lg:col-span-8 space-y-4">
+                        {/* 1. CONTACT & MEDICAL INFORMATION (EDITABLE) */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                            <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-indigo-600" />
+                                    <h3 className="text-sm font-semibold text-slate-900">Contact & Health Information</h3>
+                                </div>
+                                {!isEditing ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditing(true)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                                    >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        Edit Details
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsEditing(false);
+                                            reset();
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                        Cancel
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="p-4 sm:p-5">
+                                {isEditing ? (
+                                    <form onSubmit={handleSubmit} className="space-y-3.5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
-                                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                                <label className="block text-xs font-medium text-slate-700 mb-1">Contact Phone</label>
                                                 <input
-                                                    id="phone"
                                                     type="text"
                                                     value={data.phone}
                                                     onChange={(e) => setData('phone', e.target.value)}
-                                                    placeholder="Enter phone number"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                                    placeholder="01XXXXXXXXX"
                                                 />
-                                                {errors.phone && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-                                                )}
+                                                {errors.phone && <p className="text-rose-600 text-[11px] mt-1">{errors.phone}</p>}
                                             </div>
-
                                             <div>
-                                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                                <label className="block text-xs font-medium text-slate-700 mb-1">Email Address</label>
                                                 <input
-                                                    id="email"
                                                     type="email"
                                                     value={data.email}
                                                     onChange={(e) => setData('email', e.target.value)}
-                                                    placeholder="Enter email address"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                                    placeholder="student@example.com"
                                                 />
-                                                {errors.email && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                                                )}
+                                                {errors.email && <p className="text-rose-600 text-[11px] mt-1">{errors.email}</p>}
                                             </div>
+                                        </div>
 
-                                            <div>
-                                                <label htmlFor="present_address" className="block text-sm font-medium text-gray-700 mb-1">Present Address</label>
-                                                <textarea
-                                                    id="present_address"
-                                                    value={data.present_address}
-                                                    onChange={(e) => setData('present_address', e.target.value)}
-                                                    placeholder="Enter present address"
-                                                    rows={3}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                                {errors.present_address && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.present_address}</p>
-                                                )}
-                                            </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-700 mb-1">Present Address</label>
+                                            <textarea
+                                                rows={2}
+                                                value={data.present_address}
+                                                onChange={(e) => setData('present_address', e.target.value)}
+                                                className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                                placeholder="Street address, apartment, road no"
+                                            />
+                                            {errors.present_address && <p className="text-rose-600 text-[11px] mt-1">{errors.present_address}</p>}
+                                        </div>
 
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
-                                                <label htmlFor="medical_conditions" className="block text-sm font-medium text-gray-700 mb-1">Medical Conditions</label>
-                                                <textarea
-                                                    id="medical_conditions"
+                                                <label className="block text-xs font-medium text-slate-700 mb-1">Medical Conditions (if any)</label>
+                                                <input
+                                                    type="text"
                                                     value={data.medical_conditions}
                                                     onChange={(e) => setData('medical_conditions', e.target.value)}
-                                                    placeholder="Any medical conditions"
-                                                    rows={2}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                                    placeholder="e.g. Asthma, None"
                                                 />
                                             </div>
-
                                             <div>
-                                                <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 mb-1">Allergies</label>
-                                                <textarea
-                                                    id="allergies"
+                                                <label className="block text-xs font-medium text-slate-700 mb-1">Allergies</label>
+                                                <input
+                                                    type="text"
                                                     value={data.allergies}
                                                     onChange={(e) => setData('allergies', e.target.value)}
-                                                    placeholder="Any allergies"
-                                                    rows={2}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                                    placeholder="e.g. Peanuts, Dust"
                                                 />
                                             </div>
+                                        </div>
 
-                                            <button type="submit" disabled={processing} className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <Save className="mr-2 h-4 w-4" />
-                                                Save Changes
+                                        <div className="pt-2 flex justify-end">
+                                            <button
+                                                type="submit"
+                                                disabled={processing}
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-2xs"
+                                            >
+                                                <Save className="w-3.5 h-3.5" />
+                                                {processing ? 'Saving...' : 'Update Information'}
                                             </button>
-                                        </form>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <InfoRow icon={Phone} label="Phone" value={student.phone} />
-                                            <InfoRow icon={Mail} label="Email" value={student.email} />
-                                            <InfoRow icon={MapPin} label="Present Address" value={student.present_address} />
-                                            <InfoRow icon={MapPin} label="Permanent Address" value={student.permanent_address} />
-                                            <InfoRow icon={MapPin} label="City" value={student.city} />
-                                            <InfoRow icon={Heart} label="Medical Conditions" value={student.medical_conditions} />
-                                            <InfoRow icon={Heart} label="Allergies" value={student.allergies} />
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                    </form>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                                        <InfoRow label="Student Phone" value={student.phone} icon={Phone} />
+                                        <InfoRow label="Student Email" value={student.email} icon={Mail} />
+                                        <InfoRow label="Present Address" value={student.present_address} icon={MapPin} />
+                                        <InfoRow label="Permanent Address" value={student.permanent_address} icon={MapPin} />
+                                        <InfoRow label="City / Postal Code" value={`${student.city || ''} ${student.postal_code || ''}`.trim() || null} icon={MapPin} />
+                                        <InfoRow label="Medical Conditions" value={student.medical_conditions} icon={Heart} />
+                                        <InfoRow label="Allergies" value={student.allergies} icon={Heart} />
+                                        <InfoRow label="Birth Certificate No" value={student.birth_certificate_no} icon={Shield} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                            {/* Guardian Information */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center">
-                                        <Users className="mr-2 h-5 w-5" />
-                                        Guardian Information
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid gap-6 md:grid-cols-2">
-                                        <div>
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-2">Father's Information</h4>
-                                            <div className="space-y-2">
-                                                <InfoRow icon={User} label="Name" value={student.father_name} />
-                                                <InfoRow icon={Phone} label="Phone" value={student.father_phone} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-2">Mother's Information</h4>
-                                            <div className="space-y-2">
-                                                <InfoRow icon={User} label="Name" value={student.mother_name} />
-                                                <InfoRow icon={Phone} label="Phone" value={student.mother_phone} />
+                        {/* 2. GUARDIAN & FAMILY CONNECTIONS */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                            <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-indigo-600" />
+                                    <h3 className="text-sm font-semibold text-slate-900">Guardian & Parent Information</h3>
+                                </div>
+                            </div>
+                            <div className="p-4 sm:p-5 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Father */}
+                                    <div className="p-3.5 rounded-lg border border-slate-200/70 bg-slate-50/50">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Father's Details</span>
+                                        <p className="text-xs font-bold text-slate-800">{student.father_name || 'Not Listed'}</p>
+                                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                                            <Phone className="w-3 h-3 text-slate-400" />
+                                            {student.father_phone || 'No phone provided'}
+                                        </p>
+                                    </div>
+
+                                    {/* Mother */}
+                                    <div className="p-3.5 rounded-lg border border-slate-200/70 bg-slate-50/50">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Mother's Details</span>
+                                        <p className="text-xs font-bold text-slate-800">{student.mother_name || 'Not Listed'}</p>
+                                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                                            <Phone className="w-3 h-3 text-slate-400" />
+                                            {student.mother_phone || 'No phone provided'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {student.guardian_name && (
+                                    <div className="p-3.5 rounded-lg border border-slate-200/70 bg-slate-50/50">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Local / Legal Guardian</span>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-800">{student.guardian_name} ({student.guardian_relation || 'Guardian'})</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">{student.guardian_phone || 'No phone'}</p>
                                             </div>
                                         </div>
                                     </div>
+                                )}
 
-                                    {student.guardian_name && (
-                                        <div className="mt-6 pt-6 border-t">
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-2">Guardian Information</h4>
-                                            <div className="grid gap-4 md:grid-cols-2">
-                                                <InfoRow icon={User} label="Name" value={student.guardian_name} />
-                                                <InfoRow icon={Phone} label="Phone" value={student.guardian_phone} />
-                                                <InfoRow icon={Users} label="Relation" value={student.guardian_relation} />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {parents.length > 0 && (
-                                        <div className="mt-6 pt-6 border-t">
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-3">Registered Parents</h4>
-                                            <div className="space-y-3">
-                                                {parents.map((parent) => (
-                                                    <div key={parent.id} className="p-3 bg-gray-50 rounded-lg">
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <p className="font-medium text-sm">{parent.name}</p>
-                                                                <p className="text-xs text-gray-600">
-                                                                    {parent.relation} | {parent.phone}
-                                                                </p>
-                                                            </div>
-                                                            {parent.is_primary_contact && (
-                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">
-                                                                    Primary
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                {parents.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-semibold text-slate-700 mb-2">Registered Portal Parent Accounts</h4>
+                                        <div className="space-y-2">
+                                            {parents.map((parent) => (
+                                                <div key={parent.id} className="p-2.5 rounded-lg border border-slate-200/70 bg-white flex items-center justify-between text-xs">
+                                                    <div>
+                                                        <span className="font-semibold text-slate-800">{parent.name}</span>
+                                                        <span className="text-slate-400 mx-1.5">•</span>
+                                                        <span className="text-slate-500">{parent.relation}</span>
+                                                        <span className="text-slate-400 mx-1.5">•</span>
+                                                        <span className="text-slate-500">{parent.phone}</span>
                                                     </div>
-                                                ))}
-                                            </div>
+                                                    {parent.is_primary_contact && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                            Primary Guardian
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {/* Academic Information */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center">
-                                        <BookOpen className="mr-2 h-5 w-5" />
-                                        Academic Information
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <InfoRow icon={BookOpen} label="Academic Year" value={student.academic_year} />
-                                        <InfoRow icon={BookOpen} label="Class" value={`${student.class_name} - ${student.section_name}`} />
-                                        <InfoRow icon={BookOpen} label="Previous School" value={student.previous_school} />
-                                        <InfoRow icon={BookOpen} label="Previous Class" value={student.previous_class} />
                                     </div>
-                                </CardContent>
-                            </Card>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

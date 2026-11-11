@@ -20,6 +20,8 @@ class StudentPromotion extends Model
         'status',
         'remarks',
         'promotion_date',
+        'from_roll',
+        'to_roll',
         'promoted_by',
     ];
 

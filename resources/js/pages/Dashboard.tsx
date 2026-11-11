@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { formatReceiptNumber } from '@/lib/formatReceipt';
+import { formatWhen } from '@/utils/datetime';
 import { useInstitute } from '@/hooks/useInstitute';
 import {
     LayoutDashboard,
@@ -1028,7 +1029,7 @@ export default function Dashboard({
                                                     {e.exam_type || 'Examination'}
                                                 </p>
                                                 <p className="text-[10px] text-slate-500 mt-1 font-mono">
-                                                    Starts: {e.start_date || 'TBD'}
+                                                    Starts: {e.start_date ? formatWhen(e.start_date) : 'TBD'}
                                                 </p>
                                             </div>
                                         </div>

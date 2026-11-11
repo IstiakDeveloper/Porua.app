@@ -1,9 +1,11 @@
 import React from 'react';
+import { Head } from '@inertiajs/react';
 import {
     User, Mail, Phone, Calendar, MapPin, GraduationCap, Briefcase,
     DollarSign, BookOpen, Building2, CreditCard, FileText, Heart,
-    Globe, Flag, UserCircle, Clock, Home, MapPinned, X
+    Globe, Flag, UserCircle, Clock, Home, MapPinned, X, Printer
 } from 'lucide-react';
+import { useInstitute } from '@/hooks/useInstitute';
 
 interface Subject {
     id: number;
@@ -68,13 +70,15 @@ interface Props {
 }
 
 export default function TeacherPrintProfile({ teacher }: Props) {
+    const institute = useInstitute();
     const [imageError, setImageError] = React.useState(false);
 
     React.useEffect(() => {
         // Auto print when page loads
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             window.print();
         }, 500);
+        return () => clearTimeout(timer);
     }, []);
 
     const getTeacherImageUrl = (photo: string | null) => {
@@ -94,24 +98,26 @@ export default function TeacherPrintProfile({ teacher }: Props) {
     };
 
     const InfoRow = ({ label, value, icon }: { label: string; value: string | number | null; icon?: React.ReactNode }) => (
-        <div className="flex items-start gap-2 py-1 border-b border-gray-100 last:border-0">
+        <div className="flex items-start gap-2 py-1 border-b border-slate-100 last:border-0">
             <div className="w-1/3 flex items-center gap-1.5">
-                {icon && <span className="text-gray-500 text-xs">{icon}</span>}
-                <span className="text-[10px] font-medium text-gray-600">{label}</span>
+                {icon && <span className="text-slate-400 text-xs">{icon}</span>}
+                <span className="text-[10px] font-medium text-slate-500">{label}</span>
             </div>
             <div className="w-2/3">
-                <span className="text-[10px] text-gray-900 font-medium">{value || 'N/A'}</span>
+                <span className="text-[10px] text-slate-800 font-semibold">{value || 'N/A'}</span>
             </div>
         </div>
     );
 
     return (
-        <div className="bg-white">
+        <div className="bg-white min-h-screen">
+            <Head title={`${teacher.full_name} - Service Profile`} />
+
             <style>{`
                 @media print {
                     @page {
-                        size: A4;
-                        margin: 8mm;
+                        size: A4 portrait;
+                        margin: 10mm 12mm;
                     }
 
                     body {
@@ -126,257 +132,271 @@ export default function TeacherPrintProfile({ teacher }: Props) {
                         color-adjust: exact !important;
                     }
 
-                    .close-button {
+                    .no-print {
                         display: none !important;
+                    }
+
+                    .print-sheet {
+                        box-shadow: none !important;
+                        border: none !important;
+                        padding: 0 !important;
                     }
                 }
 
                 @media screen {
                     body {
-                        background: #f3f4f6;
-                        padding: 20px;
+                        background: #f8fafc;
+                        padding: 24px 0;
+                    }
+                    .print-sheet {
+                        max-width: 210mm;
+                        margin: 0 auto;
+                        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+                        border: 1px solid #e2e8f0;
                     }
                 }
 
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                 }
             `}</style>
 
-            {/* Close Button - Only visible on screen */}
-            <button
-                onClick={() => window.close()}
-                className="close-button fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white rounded-full p-2 shadow-lg transition-colors z-50"
-                title="Close"
-            >
-                <X className="w-5 h-5" />
-            </button>
+            {/* Screen Controls */}
+            <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
+                <button
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md transition-colors"
+                >
+                    <Printer className="w-3.5 h-3.5" />
+                    Print Service Record
+                </button>
+                <button
+                    onClick={() => window.close()}
+                    className="bg-slate-800 hover:bg-slate-900 text-white rounded-full p-2 shadow-md transition-colors"
+                    title="Close Window"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
 
-            <div className="max-w-full mx-auto p-3 space-y-2">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-4 rounded">
-                    <div className="flex items-start gap-4">
-                        {/* Photo */}
-                        <div className="flex-shrink-0">
-                            {teacher.photo && !imageError ? (
-                                <img
-                                    src={getTeacherImageUrl(teacher.photo) || ''}
-                                    alt={teacher.full_name}
-                                    className="w-16 h-16 rounded object-cover border-2 border-white"
-                                    onError={() => setImageError(true)}
-                                />
-                            ) : (
-                                <div className="w-16 h-16 rounded bg-white/20 flex items-center justify-center border-2 border-white">
-                                    <User className="w-8 h-8 text-white" />
-                                </div>
-                            )}
-                        </div>
+            <div className="print-sheet bg-white p-6 space-y-4">
+                {/* 1. INSTITUTIONAL HEADER */}
+                <div className="border-b-2 border-slate-800 pb-3 flex items-start justify-between">
+                    <div>
+                        <h1 className="text-lg font-black uppercase tracking-wide text-slate-900">{institute.name}</h1>
+                        <p className="text-[11px] text-slate-600">{institute.address} • Phone: {institute.phone}</p>
+                        <p className="text-[10px] text-slate-500">Official Faculty Service Register & Academic Dossier</p>
+                    </div>
+                    <div className="text-right">
+                        <span className="inline-block px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-[10px] font-bold">
+                            {teacher.employee_id}
+                        </span>
+                        <p className="text-[9px] text-slate-400 mt-1">Generated: {new Date().toLocaleDateString('en-GB')}</p>
+                    </div>
+                </div>
 
-                        {/* Basic Info */}
-                        <div className="flex-1">
-                            <h1 className="text-xl font-bold mb-0.5">{teacher.full_name}</h1>
-                            <p className="text-sm text-blue-100 mb-2">{teacher.designation || 'Teacher'}</p>
-                            <div className="flex gap-2 text-xs">
-                                <div className="bg-white/20 px-2 py-0.5 rounded">
-                                    <span className="font-medium">{teacher.employee_id}</span>
-                                </div>
-                                <div className="bg-white/20 px-2 py-0.5 rounded">
-                                    <span>{teacher.department || 'N/A'}</span>
-                                </div>
-                                <div className="bg-white/20 px-2 py-0.5 rounded capitalize">
-                                    <span>{teacher.status}</span>
-                                </div>
+                {/* 2. FACULTY EXECUTIVE PROFILE BANNER */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 flex items-start gap-4">
+                    <div className="shrink-0">
+                        {teacher.photo && !imageError ? (
+                            <img
+                                src={getTeacherImageUrl(teacher.photo) || ''}
+                                alt={teacher.full_name}
+                                className="w-20 h-20 rounded-lg object-cover border border-slate-300"
+                                onError={() => setImageError(true)}
+                            />
+                        ) : (
+                            <div className="w-20 h-20 rounded-lg bg-slate-200 flex items-center justify-center border border-slate-300">
+                                <User className="w-8 h-8 text-slate-400" />
                             </div>
-                        </div>
+                        )}
+                    </div>
 
-                        {/* Stats */}
-                        <div className="flex gap-2">
-                            <div className="bg-white/20 rounded p-2 text-center min-w-[60px]">
-                                <p className="text-lg font-bold">{teacher.experience_years}</p>
-                                <p className="text-[9px] text-blue-100">Years Exp.</p>
-                            </div>
-                            <div className="bg-white/20 rounded p-2 text-center min-w-[60px]">
-                                <p className="text-lg font-bold">{teacher.subjects_count}</p>
-                                <p className="text-[9px] text-blue-100">Subjects</p>
-                            </div>
+                    <div className="flex-1 space-y-1">
+                        <h2 className="text-base font-bold text-slate-900 leading-tight">{teacher.full_name}</h2>
+                        <p className="text-xs font-semibold text-indigo-700">
+                            {teacher.designation || 'Teacher'} • {teacher.department || 'Department N/A'}
+                        </p>
+                        <div className="flex flex-wrap gap-2 text-[10px] text-slate-600 pt-1">
+                            <span><strong>Status:</strong> {teacher.status?.toUpperCase()}</span>
+                            <span>•</span>
+                            <span><strong>Type:</strong> {teacher.employment_type?.replace('_', ' ')?.toUpperCase() || 'PERMANENT'}</span>
+                            <span>•</span>
+                            <span><strong>Experience:</strong> {teacher.experience_years} Years</span>
+                            <span>•</span>
+                            <span><strong>Teaching:</strong> {teacher.subjects_count} Subjects</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Two Column Layout */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* 3. TWO-COLUMN SERVICE DOSSIER */}
+                <div className="grid grid-cols-2 gap-3.5">
                     {/* Left Column */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         {/* Contact Information */}
-                        <div className="border border-gray-200 rounded overflow-hidden">
-                            <div className="bg-blue-50 px-2 py-1 border-b border-gray-200">
-                                <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    <Mail className="w-3 h-3 text-blue-600" />
-                                    Contact Information
-                                </h2>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                                <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                    <Mail className="w-3 h-3 text-slate-600" />
+                                    Communication Coordinates
+                                </h3>
                             </div>
-                            <div className="p-2">
-                                <InfoRow label="Email" value={teacher.email} icon={<Mail className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Phone" value={teacher.phone} icon={<Phone className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Emergency" value={teacher.emergency_contact} icon={<Phone className="w-2.5 h-2.5" />} />
-                                <InfoRow label="NID" value={teacher.nid_no} icon={<FileText className="w-2.5 h-2.5" />} />
-                            </div>
-                        </div>
-
-                        {/* Personal Information */}
-                        <div className="border border-gray-200 rounded overflow-hidden">
-                            <div className="bg-purple-50 px-2 py-1 border-b border-gray-200">
-                                <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    <User className="w-3 h-3 text-purple-600" />
-                                    Personal Information
-                                </h2>
-                            </div>
-                            <div className="p-2">
-                                <InfoRow label="Date of Birth" value={formatDate(teacher.date_of_birth)} icon={<Calendar className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Gender" value={teacher.gender?.charAt(0).toUpperCase() + (teacher.gender?.slice(1) || '')} icon={<UserCircle className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Blood Group" value={teacher.blood_group} icon={<Heart className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Religion" value={teacher.religion} icon={<Globe className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Nationality" value={teacher.nationality} icon={<Flag className="w-2.5 h-2.5" />} />
+                            <div className="p-2.5">
+                                <InfoRow label="Email Address" value={teacher.email} />
+                                <InfoRow label="Primary Phone" value={teacher.phone} />
+                                <InfoRow label="Emergency Phone" value={teacher.emergency_contact} />
+                                <InfoRow label="National ID (NID)" value={teacher.nid_no} />
                             </div>
                         </div>
 
-                        {/* Address Information */}
-                        <div className="border border-gray-200 rounded overflow-hidden">
-                            <div className="bg-green-50 px-2 py-1 border-b border-gray-200">
-                                <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    <MapPin className="w-3 h-3 text-green-600" />
-                                    Address Information
-                                </h2>
+                        {/* Personal & Demographic */}
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                                <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                    <User className="w-3 h-3 text-slate-600" />
+                                    Demographic Details
+                                </h3>
                             </div>
-                            <div className="p-2 space-y-1.5">
+                            <div className="p-2.5">
+                                <InfoRow label="Date of Birth" value={formatDate(teacher.date_of_birth)} />
+                                <InfoRow label="Gender" value={teacher.gender?.toUpperCase()} />
+                                <InfoRow label="Blood Group" value={teacher.blood_group} />
+                                <InfoRow label="Religion" value={teacher.religion} />
+                                <InfoRow label="Nationality" value={teacher.nationality} />
+                            </div>
+                        </div>
+
+                        {/* Residential Addresses */}
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                                <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                    <MapPin className="w-3 h-3 text-slate-600" />
+                                    Residential Addresses
+                                </h3>
+                            </div>
+                            <div className="p-2.5 space-y-2 text-[10px]">
                                 <div>
-                                    <div className="flex items-center gap-1 mb-0.5">
-                                        <Home className="w-2.5 h-2.5 text-gray-500" />
-                                        <span className="text-[9px] font-medium text-gray-600">Present Address</span>
-                                    </div>
-                                    <p className="text-[9px] text-gray-900 pl-3.5 leading-tight">{teacher.present_address || 'N/A'}</p>
+                                    <span className="font-semibold text-slate-500 block">Present Address:</span>
+                                    <p className="text-slate-800 font-medium pl-2">{teacher.present_address || 'N/A'}</p>
                                 </div>
-                                <div className="border-t border-gray-100 pt-1.5">
-                                    <div className="flex items-center gap-1 mb-0.5">
-                                        <MapPinned className="w-2.5 h-2.5 text-gray-500" />
-                                        <span className="text-[9px] font-medium text-gray-600">Permanent Address</span>
-                                    </div>
-                                    <p className="text-[9px] text-gray-900 pl-3.5 leading-tight">{teacher.permanent_address || 'N/A'}</p>
+                                <div className="border-t border-slate-100 pt-1.5">
+                                    <span className="font-semibold text-slate-500 block">Permanent Address:</span>
+                                    <p className="text-slate-800 font-medium pl-2">{teacher.permanent_address || 'N/A'}</p>
                                 </div>
-                                <div className="border-t border-gray-100 pt-1.5">
-                                    <InfoRow label="City" value={teacher.city} />
-                                    <InfoRow label="State" value={teacher.state} />
-                                    <InfoRow label="Postal Code" value={teacher.postal_code} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Bank Information */}
-                        <div className="border border-gray-200 rounded overflow-hidden">
-                            <div className="bg-teal-50 px-2 py-1 border-b border-gray-200">
-                                <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    <CreditCard className="w-3 h-3 text-teal-600" />
-                                    Bank Information
-                                </h2>
-                            </div>
-                            <div className="p-2">
-                                <InfoRow label="Bank Name" value={teacher.bank_name} icon={<Building2 className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Account No" value={teacher.bank_account_no} icon={<CreditCard className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Branch" value={teacher.bank_branch} icon={<MapPin className="w-2.5 h-2.5" />} />
                             </div>
                         </div>
                     </div>
 
                     {/* Right Column */}
-                    <div className="space-y-2">
-                        {/* Professional Information */}
-                        <div className="border border-gray-200 rounded overflow-hidden">
-                            <div className="bg-orange-50 px-2 py-1 border-b border-gray-200">
-                                <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    <GraduationCap className="w-3 h-3 text-orange-600" />
-                                    Professional Information
-                                </h2>
+                    <div className="space-y-3">
+                        {/* Professional & Academic */}
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                                <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                    <GraduationCap className="w-3 h-3 text-slate-600" />
+                                    Academic & Professional
+                                </h3>
                             </div>
-                            <div className="p-2">
-                                <InfoRow label="Designation" value={teacher.designation} icon={<Briefcase className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Department" value={teacher.department} icon={<Building2 className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Qualification" value={teacher.qualification} icon={<GraduationCap className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Specialization" value={teacher.specialization} icon={<BookOpen className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Experience" value={`${teacher.experience_years} years`} icon={<Clock className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Employment Type" value={teacher.employment_type?.replace('_', ' ').toUpperCase()} icon={<Briefcase className="w-2.5 h-2.5" />} />
-                                {teacher.previous_experience && (
-                                    <div className="mt-2 pt-2 border-t border-gray-100">
-                                        <p className="text-[9px] font-medium text-gray-600 mb-0.5">Previous Experience</p>
-                                        <p className="text-[9px] text-gray-900 whitespace-pre-wrap leading-tight">{teacher.previous_experience}</p>
-                                    </div>
-                                )}
+                            <div className="p-2.5">
+                                <InfoRow label="Qualification" value={teacher.qualification} />
+                                <InfoRow label="Specialization" value={teacher.specialization} />
+                                <InfoRow label="Experience" value={`${teacher.experience_years} years`} />
+                                <InfoRow label="Joining Date" value={formatDate(teacher.joining_date)} />
+                                <InfoRow label="Leaving Date" value={teacher.leaving_date ? formatDate(teacher.leaving_date) : 'In Service'} />
+                                <InfoRow label="Monthly Salary" value={`৳${Number(teacher.salary || 0).toLocaleString()}`} />
                             </div>
                         </div>
 
-                        {/* Employment Details */}
-                        <div className="border border-gray-200 rounded overflow-hidden">
-                            <div className="bg-indigo-50 px-2 py-1 border-b border-gray-200">
-                                <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    <Calendar className="w-3 h-3 text-indigo-600" />
-                                    Employment Details
-                                </h2>
+                        {/* Bank Coordinates */}
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                                <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                    <CreditCard className="w-3 h-3 text-slate-600" />
+                                    Payroll Bank Account
+                                </h3>
                             </div>
-                            <div className="p-2">
-                                <InfoRow label="Joining Date" value={formatDate(teacher.joining_date)} icon={<Calendar className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Leaving Date" value={teacher.leaving_date ? formatDate(teacher.leaving_date) : 'N/A'} icon={<Calendar className="w-2.5 h-2.5" />} />
-                                <InfoRow label="Status" value={teacher.status.charAt(0).toUpperCase() + teacher.status.slice(1)} />
-                                <InfoRow label="Salary" value={`৳${Number(teacher.salary).toLocaleString()}`} icon={<DollarSign className="w-2.5 h-2.5" />} />
+                            <div className="p-2.5">
+                                <InfoRow label="Bank Name" value={teacher.bank_name} />
+                                <InfoRow label="Branch Name" value={teacher.bank_branch} />
+                                <InfoRow label="Account Number" value={teacher.bank_account_no} />
                             </div>
                         </div>
 
-                        {/* Assigned Subjects */}
-                        {teacher.teacher_subjects && teacher.teacher_subjects.length > 0 && (
-                            <div className="border border-gray-200 rounded overflow-hidden">
-                                <div className="bg-rose-50 px-2 py-1 border-b border-gray-200">
-                                    <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                        <BookOpen className="w-3 h-3 text-rose-600" />
-                                        Assigned Subjects ({teacher.teacher_subjects.length})
-                                    </h2>
+                        {/* Previous Experience */}
+                        {teacher.previous_experience && (
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                                    <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                        <Briefcase className="w-3 h-3 text-slate-600" />
+                                        Previous Work History
+                                    </h3>
                                 </div>
-                                <table className="w-full text-[9px]">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-2 py-1 text-left font-semibold text-gray-900">Subject</th>
-                                            <th className="px-2 py-1 text-left font-semibold text-gray-900">Code</th>
-                                            <th className="px-2 py-1 text-left font-semibold text-gray-900">Classes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {teacher.teacher_subjects.map((ts) => (
-                                            <tr key={ts.id}>
-                                                <td className="px-2 py-1 font-medium text-gray-900">{ts.subject.name}</td>
-                                                <td className="px-2 py-1 text-gray-700 font-mono">{ts.subject.code}</td>
-                                                <td className="px-2 py-1">
-                                                    {ts.classes && ts.classes.length > 0
-                                                        ? ts.classes.map(cls => cls.name).join(', ')
-                                                        : 'No classes'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <div className="p-2.5">
+                                    <p className="text-[10px] text-slate-700 leading-snug whitespace-pre-wrap">{teacher.previous_experience}</p>
+                                </div>
                             </div>
                         )}
+                    </div>
+                </div>
 
-                        {/* Additional Notes */}
-                        {teacher.notes && (
-                            <div className="border border-gray-200 rounded overflow-hidden">
-                                <div className="bg-violet-50 px-2 py-1 border-b border-gray-200">
-                                    <h2 className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                                        <FileText className="w-3 h-3 text-violet-600" />
-                                        Additional Notes
-                                    </h2>
-                                </div>
-                                <div className="p-2">
-                                    <p className="text-[9px] text-gray-900 whitespace-pre-wrap leading-tight">{teacher.notes}</p>
-                                </div>
-                            </div>
-                        )}
+                {/* 4. ASSIGNED SUBJECTS TABLE */}
+                {teacher.teacher_subjects && teacher.teacher_subjects.length > 0 && (
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                            <h3 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                                <BookOpen className="w-3 h-3 text-slate-600" />
+                                Allocated Academic Courses & Subjects ({teacher.teacher_subjects.length})
+                            </h3>
+                        </div>
+                        <table className="w-full text-[10px]">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                                <tr>
+                                    <th className="px-3 py-1.5 text-left">Subject Name</th>
+                                    <th className="px-3 py-1.5 text-left font-mono">Code</th>
+                                    <th className="px-3 py-1.5 text-left">Allocated Classes & Sections</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-800">
+                                {teacher.teacher_subjects.map((ts) => (
+                                    <tr key={ts.id}>
+                                        <td className="px-3 py-1.5 font-semibold">{ts.subject.name}</td>
+                                        <td className="px-3 py-1.5 font-mono text-slate-600">{ts.subject.code}</td>
+                                        <td className="px-3 py-1.5">
+                                            {ts.classes && ts.classes.length > 0
+                                                ? ts.classes.map(c => c.name).join(', ')
+                                                : 'All Sections'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* 5. NOTES (IF ANY) */}
+                {teacher.notes && (
+                    <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 text-[10px]">
+                        <span className="font-bold text-slate-700 block mb-0.5">Administrative Remarks:</span>
+                        <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{teacher.notes}</p>
+                    </div>
+                )}
+
+                {/* 6. OFFICIAL VERIFICATION & SIGNATURES */}
+                <div className="pt-8 grid grid-cols-3 gap-6 text-center text-[10px]">
+                    <div>
+                        <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">
+                            Faculty Signature
+                        </div>
+                    </div>
+                    <div>
+                        <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">
+                            Verified By (HR / Admin)
+                        </div>
+                    </div>
+                    <div>
+                        <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">
+                            Head of Institution / Principal
+                        </div>
                     </div>
                 </div>
             </div>

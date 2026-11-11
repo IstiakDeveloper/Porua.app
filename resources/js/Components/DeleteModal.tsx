@@ -7,9 +7,10 @@ interface DeleteModalProps {
     onClose: () => void;
     onConfirm: () => void;
     title: string;
-    message: string;
+    message?: string;
     itemName?: string;
     isDeleting?: boolean;
+    confirmLabel?: string;
 }
 
 export default function DeleteModal({
@@ -20,8 +21,11 @@ export default function DeleteModal({
     message,
     itemName,
     isDeleting = false,
+    confirmLabel,
 }: DeleteModalProps) {
     if (!isOpen) return null;
+
+    const displayMessage = message || (itemName ? `Are you sure you want to delete "${itemName}"?` : 'Are you sure you want to delete this item?');
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -54,7 +58,7 @@ export default function DeleteModal({
                             </div>
                             <div className="mt-2">
                                 <p className="text-sm text-gray-500">
-                                    {message}
+                                    {displayMessage}
                                 </p>
                                 {itemName && (
                                     <p className="mt-2 text-sm font-semibold text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
@@ -75,7 +79,7 @@ export default function DeleteModal({
                         disabled={isDeleting}
                         className="w-full sm:w-auto"
                     >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
+                        {confirmLabel || (isDeleting ? 'Deleting...' : 'Delete')}
                     </Button>
                     <Button
                         variant="ghost"

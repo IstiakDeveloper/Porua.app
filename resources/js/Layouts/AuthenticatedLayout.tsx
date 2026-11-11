@@ -11,8 +11,9 @@ interface AuthenticatedLayoutProps {
 }
 
 export default function AuthenticatedLayout({ children, header }: AuthenticatedLayoutProps) {
-    const { url, component } = usePage();
+    const { url, component, props } = usePage<{ auth?: { user?: { roles?: Array<{ name: string }> } } }>();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const isParent = props.auth?.user?.roles?.some((role) => role.name === 'Parent') ?? false;
     
     // Automatically close mobile menu drawer on route change
     useEffect(() => {
@@ -27,14 +28,16 @@ export default function AuthenticatedLayout({ children, header }: AuthenticatedL
     const isReportPage = url.includes('/reports') || /report/i.test(component);
 
     let layoutClass = 'index-premium-layout';
-    if (isAttendancePage) {
+    if (isParent) {
+        layoutClass = 'parent-family-layout';
+    } else if (isAttendancePage) {
         layoutClass = 'attendance-module-layout';
     } else if (isReportPage) {
         layoutClass = 'report-page-layout';
     }
 
     return (
-        <div className={`min-h-screen ${isAttendancePage ? 'bg-slate-50/80 text-slate-900' : 'bg-emerald-50/40'}`}>
+        <div className={`min-h-screen ${isParent ? 'bg-slate-50 text-slate-900' : isAttendancePage ? 'bg-slate-50/80 text-slate-900' : 'bg-emerald-50/40'}`}>
             <FlashMessage />
             <Sidebar
                 mobileOpen={mobileMenuOpen}

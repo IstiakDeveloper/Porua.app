@@ -21,8 +21,9 @@ import {
     Clock,
     XCircle,
     Calendar,
-    Paperclip
+    Paperclip,
 } from 'lucide-react';
+import { formatBdDate, formatBdDateRange, formatDays, formatDaysCount } from '@/utils/datetime';
 
 interface Subject {
     id: number;
@@ -127,7 +128,7 @@ export default function Profile({
         });
     };
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, put, processing, errors, reset } = useForm({
         phone: teacher.phone || '',
         email: teacher.email || '',
         address: teacher.address || '',
@@ -529,12 +530,12 @@ export default function Profile({
                                                 </span>
                                             </div>
                                             <p className="mt-2 text-xl font-black text-slate-900">
-                                                {b.days_remaining !== null ? b.days_remaining : '—'}
+                                                {b.days_remaining !== null ? formatDaysCount(b.days_remaining) : '—'}
                                                 {b.days_allowed > 0 && (
-                                                    <span className="text-[11px] font-normal text-slate-400 ml-1">/ {b.days_allowed}d</span>
+                                                    <span className="text-[11px] font-normal text-slate-400 ml-1">/ {formatDaysCount(b.days_allowed)}d</span>
                                                 )}
                                             </p>
-                                            <span className="text-[10px] text-slate-500">Used: {b.days_used} days</span>
+                                            <span className="text-[10px] text-slate-500">Used: {formatDays(b.days_used)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -553,7 +554,7 @@ export default function Profile({
                                                             {leave.leave_type?.name || 'Leave'}
                                                         </span>
                                                         <span className="text-xs text-slate-500">
-                                                            ({leave.start_date === leave.end_date ? leave.start_date : `${leave.start_date} to ${leave.end_date}`} &bull; {leave.total_days}d)
+                                                            ({formatBdDateRange(leave.start_date, leave.end_date)} &bull; {formatDays(leave.total_days)})
                                                         </span>
                                                     </div>
                                                     <p className="text-xs text-slate-600 mt-0.5 line-clamp-1">{leave.reason}</p>

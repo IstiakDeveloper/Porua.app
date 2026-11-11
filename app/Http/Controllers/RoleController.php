@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
 use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -14,10 +14,11 @@ class RoleController extends Controller
     {
         $this->authorize('view_users');
 
-        $roles = Role::withCount(['users', 'permissions'])->get();
+        $roles = Role::withCount(['users', 'permissions'])->with('permissions')->get();
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
+            'totalPermissions' => \App\Models\Permission::count(),
         ]);
     }
 
@@ -49,7 +50,7 @@ class RoleController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        if (!empty($validated['permission_ids'])) {
+        if (! empty($validated['permission_ids'])) {
             $role->permissions()->sync($validated['permission_ids']);
         }
 
@@ -57,6 +58,18 @@ class RoleController extends Controller
 
         return redirect()->route('roles.index')
             ->with('success', 'Role created successfully');
+    }
+
+    public function show(Role $role)
+    {
+        $this->authorize('view_users');
+
+        $role->load(['permissions', 'users' => fn ($q) => $q->latest()->take(50)]);
+        $role->loadCount('users');
+
+        return Inertia::render('Roles/Show', [
+            'role' => $role,
+        ]);
     }
 
     public function edit(Role $role)

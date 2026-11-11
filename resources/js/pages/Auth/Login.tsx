@@ -1,6 +1,6 @@
 import React, { FormEvent, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Mail, Lock, GraduationCap, ArrowRight, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { User, Mail, Lock, GraduationCap, ArrowRight, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useInstitute } from '@/hooks/useInstitute';
 
 interface LoginProps {
@@ -13,6 +13,7 @@ export default function Login({ status }: LoginProps) {
     const { flash } = usePage<{ flash?: { error?: string; success?: string; message?: string } }>().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        login: '',
         email: '',
         password: '',
         remember: false,
@@ -75,39 +76,42 @@ export default function Login({ status }: LoginProps) {
                     )}
 
                     <form onSubmit={submit} className="space-y-5">
-                        {/* Email Field */}
+                        {/* Login Identifier Field (Username / Mobile / Email) */}
                         <div>
                             <label
-                                htmlFor="email"
+                                htmlFor="login"
                                 className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
                             >
-                                Email Address <span className="text-red-500">*</span>
+                                Username / Mobile / Email <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                    <Mail className="w-4 h-4" />
+                                    <User className="w-4 h-4" />
                                 </div>
                                 <input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    value={data.email}
-                                    onChange={(e) => setData('email', e.target.value)}
+                                    id="login"
+                                    type="text"
+                                    name="login"
+                                    value={data.login}
+                                    onChange={(e) => {
+                                        setData('login', e.target.value);
+                                        setData('email', e.target.value);
+                                    }}
                                     required
                                     autoFocus
-                                    autoComplete="email"
-                                    placeholder="name@example.com"
+                                    autoComplete="username"
+                                    placeholder="e.g. 017xxxxxxxx or username or email"
                                     className={`w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border rounded-xl text-slate-900 placeholder:text-slate-400 transition-all outline-none ${
-                                        errors.email
+                                        errors.login || errors.email
                                             ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-500/10'
                                             : 'border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 hover:border-slate-300'
                                     }`}
                                 />
                             </div>
-                            {errors.email && (
+                            {(errors.login || errors.email) && (
                                 <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{errors.email}</span>
+                                    <span>{errors.login || errors.email}</span>
                                 </p>
                             )}
                         </div>

@@ -22,6 +22,7 @@ import {
     Search,
     Building2
 } from 'lucide-react';
+import { formatBdDate, formatBdDateRange, formatDays, formatDaysCount } from '@/utils/datetime';
 
 interface Teacher {
     id: number;
@@ -475,12 +476,10 @@ export default function Index({
                                     {/* Period */}
                                     <td className="py-3 px-4">
                                         <p className="text-xs font-bold text-slate-800">
-                                            {app.start_date === app.end_date
-                                                ? app.start_date
-                                                : `${app.start_date} to ${app.end_date}`}
+                                            {formatBdDateRange(app.start_date, app.end_date)}
                                         </p>
                                         <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-                                            {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
+                                            {formatDays(app.total_days)}
                                             {app.is_half_day && (
                                                 <span className="ml-1 text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded font-normal">
                                                     Half Day ({app.half_day_type === 'first_half' ? '1st Half' : '2nd Half'})
@@ -600,7 +599,7 @@ export default function Index({
                             <h3 className="text-base font-bold text-slate-900">Approve Leave Application</h3>
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                            Approving this leave will immediately mark the teacher as <span className="font-semibold text-sky-700 bg-sky-50 px-1 py-0.5 rounded">Leave</span> in the daily attendance records, monthly view, and printed attendance sheets for each active working day between <strong>{selectedApp?.start_date}</strong> and <strong>{selectedApp?.end_date}</strong>.
+                            Approving this leave will immediately mark the teacher as <span className="font-semibold text-sky-700 bg-sky-50 px-1 py-0.5 rounded">Leave</span> in the daily attendance records, monthly view, and printed attendance sheets for each active working day between <strong>{formatBdDate(selectedApp?.start_date)}</strong> and <strong>{formatBdDate(selectedApp?.end_date)}</strong>.
                         </p>
                         <div>
                             <label className="block text-xs font-semibold text-slate-700 mb-1">

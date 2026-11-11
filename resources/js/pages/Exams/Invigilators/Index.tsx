@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Button from '@/Components/Button';
 import DeleteModal from '@/Components/DeleteModal';
 import IndexPagination from '@/Components/IndexPagination';
+import { formatClock, formatWhen } from '@/utils/datetime';
 import {
     UserCheck,
     Plus,
@@ -326,11 +327,11 @@ export default function Index({
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
                                                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span>{inv.duty_date}</span>
+                                                        <span>{formatWhen(inv.duty_date)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
                                                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span>{inv.duty_time}</span>
+                                                        <span>{formatClock(inv.duty_time)}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -349,7 +350,7 @@ export default function Index({
                                                     onClick={() =>
                                                         handleDeleteClick(
                                                             inv.id,
-                                                            `${inv.teacher?.user?.name} (${inv.duty_date})`
+                                                            `${inv.teacher?.user?.name} (${formatWhen(inv.duty_date)})`
                                                         )
                                                     }
                                                     className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"

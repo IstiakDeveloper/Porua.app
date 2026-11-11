@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudentPromotion;
-use App\Models\Student;
 use App\Models\AcademicYear;
 use App\Models\SchoolClass;
-use App\Models\Section;
+use App\Models\StudentPromotion;
+use App\Services\PromotionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class StudentPromotionController extends Controller
 {
+    public function __construct(private PromotionService $promotions) {}
+
     public function index(Request $request)
     {
         $this->authorize('view_students');
@@ -25,15 +26,16 @@ class StudentPromotionController extends Controller
             'fromClass',
             'toClass',
             'fromSection',
-            'toSection'
+            'toSection',
         ])
-            ->when($request->academic_year_id, fn($q) => $q->where('to_academic_year_id', $request->academic_year_id))
+            ->when($request->academic_year_id, fn ($q) => $q->where('to_academic_year_id', $request->academic_year_id))
             ->latest()
             ->paginate(20)->withQueryString();
 
         return Inertia::render('Students/Promotions/Index', [
             'promotions' => $promotions,
             'academicYears' => AcademicYear::all(),
+            'filters' => $request->only(['academic_year_id']),
         ]);
     }
 
@@ -42,8 +44,8 @@ class StudentPromotionController extends Controller
         $this->authorize('edit_students');
 
         return Inertia::render('Students/Promotions/Create', [
-            'academicYears' => AcademicYear::all(),
-            'classes' => SchoolClass::with('sections')->where('status', 'active')->get(),
+            'academicYears' => AcademicYear::orderByDesc('start_date')->get(),
+            'classes' => SchoolClass::with('sections')->where('status', 'active')->orderBy('numeric_value')->get(),
         ]);
     }
 
@@ -54,108 +56,51 @@ class StudentPromotionController extends Controller
         $validated = $request->validate([
             'from_academic_year_id' => 'required|exists:academic_years,id',
             'to_academic_year_id' => 'required|exists:academic_years,id|different:from_academic_year_id',
-            'from_class_id' => 'required|exists:classes,id',
+            'from_class_id' => 'nullable|exists:classes,id',
             'from_section_id' => 'nullable|exists:sections,id',
-            'to_class_id' => 'required|exists:classes,id',
-            'to_section_id' => 'nullable|exists:sections,id',
-            'student_ids' => 'required|array',
-            'student_ids.*' => 'exists:students,id',
             'promotion_date' => 'required|date',
-            'status' => 'required|in:promoted,detained,passed_out',
             'remarks' => 'nullable|string',
+            'decisions' => 'required|array|min:1',
+            'decisions.*.student_id' => 'required|integer|exists:students,id',
+            'decisions.*.status' => 'required|in:promoted,detained,passed_out',
+            'decisions.*.to_section_id' => 'nullable|integer|exists:sections,id',
         ]);
 
-        DB::beginTransaction();
-        try {
-            foreach ($validated['student_ids'] as $studentId) {
-                $student = Student::findOrFail($studentId);
+        $result = $this->promotions->promote($validated, (int) $request->user()->id);
 
-                // Create promotion record
-                StudentPromotion::create([
-                    'student_id' => $studentId,
-                    'from_academic_year_id' => $validated['from_academic_year_id'],
-                    'to_academic_year_id' => $validated['to_academic_year_id'],
-                    'from_class_id' => $validated['from_class_id'],
-                    'to_class_id' => $validated['to_class_id'],
-                    'from_section_id' => $validated['from_section_id'],
-                    'to_section_id' => $validated['to_section_id'],
-                    'promotion_date' => $validated['promotion_date'],
-                    'status' => $validated['status'],
-                    'remarks' => $validated['remarks'],
-                ]);
-
-                // Update student current class/section
-                $student->update([
-                    'academic_year_id' => $validated['to_academic_year_id'],
-                    'class_id' => $validated['to_class_id'],
-                    'section_id' => $validated['to_section_id'],
-                ]);
-
-                logActivity('create', "Promoted student: {$student->user->name}", StudentPromotion::class, $studentId);
-            }
-
-            DB::commit();
-
-            return redirect()->route('student-promotions.index')
-                ->with('success', count($validated['student_ids']) . ' students promoted successfully');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to promote students: ' . $e->getMessage());
+        $message = $result['count'].' '.($result['count'] === 1 ? 'student' : 'students').' updated successfully';
+        if ($result['missing_fee_classes'] !== []) {
+            $message .= '. No fee structure for '.implode(', ', $result['missing_fee_classes']).' in the target year, so monthly fees will not generate for that class until a structure is added.';
         }
+
+        return redirect()->route('student-promotions.index')
+            ->with('success', $message);
     }
 
     public function getStudentsForPromotion(Request $request)
     {
         $this->authorize('view_students');
 
-        $students = Student::with(['schoolClass', 'section'])
-            ->where('academic_year_id', $request->academic_year_id)
-            ->where('class_id', $request->class_id)
-            ->when($request->section_id, fn($q) => $q->where('section_id', $request->section_id))
-            ->where('status', 'active')
-            ->get()
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'admission_number' => $student->admission_number,
-                    'roll_number' => $student->roll_number,
-                    'first_name' => $student->first_name,
-                    'last_name' => $student->last_name,
-                    'photo_url' => $student->photo_url,
-                    'current_class_id' => $student->class_id,
-                    'current_section_id' => $student->section_id,
-                ];
-            });
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'class_id' => 'nullable|exists:classes,id',
+            'section_id' => 'nullable|exists:sections,id',
+            'to_academic_year_id' => 'required|exists:academic_years,id|different:academic_year_id',
+        ]);
 
-        return response()->json($students);
+        return response()->json($this->promotions->preview($validated));
     }
 
     public function destroy(StudentPromotion $studentPromotion)
     {
         $this->authorize('delete_students');
 
-        DB::beginTransaction();
         try {
-            // Revert student to previous class
-            $student = $studentPromotion->student;
-            $student->update([
-                'academic_year_id' => $studentPromotion->from_academic_year_id,
-                'class_id' => $studentPromotion->from_class_id,
-                'section_id' => $studentPromotion->from_section_id,
-            ]);
-
-            $studentPromotion->delete();
-
-            DB::commit();
-
-            logActivity('delete', "Reverted promotion for student: {$student->user->name}", StudentPromotion::class, $studentPromotion->id);
-
-            return back()->with('success', 'Promotion reverted successfully');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Failed to revert promotion: ' . $e->getMessage());
+            $this->promotions->revert($studentPromotion);
+        } catch (ValidationException $exception) {
+            return back()->with('error', collect($exception->errors())->flatten()->first());
         }
+
+        return back()->with('success', 'Promotion reverted successfully');
     }
 }

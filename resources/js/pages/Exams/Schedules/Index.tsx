@@ -21,6 +21,7 @@ import {
     BookMarked,
 } from 'lucide-react';
 import { ExamSchedule, PaginatedData, ScheduleFilters, Exam, SchoolClass } from '@/types/exam';
+import { formatTimeRange, formatWhen } from '@/utils/datetime';
 
 interface IndexProps {
     schedules: PaginatedData<ExamSchedule>;
@@ -237,12 +238,12 @@ export default function Index({ schedules, filters, exams, classes }: IndexProps
                                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700 bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
                                         <span className="inline-flex items-center gap-1 font-mono">
                                             <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                                            {schedule.exam_date}
+                                            {formatWhen(schedule.exam_date)}
                                         </span>
                                         <span className="text-slate-300">|</span>
                                         <span className="inline-flex items-center gap-1 font-mono">
                                             <Clock className="w-3.5 h-3.5 text-amber-500" />
-                                            {schedule.start_time} - {schedule.end_time}
+                                            {formatTimeRange(schedule.start_time, schedule.end_time)}
                                         </span>
                                         {schedule.room_number && (
                                             <>
@@ -273,7 +274,7 @@ export default function Index({ schedules, filters, exams, classes }: IndexProps
                                             onClick={() =>
                                                 handleDeleteClick(
                                                     schedule.id,
-                                                    `${schedule.subject?.name} (${schedule.exam_date})`
+                                                    `${schedule.subject?.name} (${formatWhen(schedule.exam_date)})`
                                                 )
                                             }
                                             className="inline-flex items-center justify-center p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors"
@@ -319,7 +320,7 @@ export default function Index({ schedules, filters, exams, classes }: IndexProps
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-semibold text-slate-900 font-mono">
-                                                            {schedule.exam_date}
+                                                            {formatWhen(schedule.exam_date)}
                                                         </p>
                                                         <p className="text-xs text-slate-400">
                                                             {schedule.exam?.name}
@@ -330,7 +331,7 @@ export default function Index({ schedules, filters, exams, classes }: IndexProps
                                             <td className="px-5 py-4">
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 font-mono text-xs text-slate-700 font-medium">
                                                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                                    {schedule.start_time} - {schedule.end_time}
+                                                    {formatTimeRange(schedule.start_time, schedule.end_time)}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
@@ -382,7 +383,7 @@ export default function Index({ schedules, filters, exams, classes }: IndexProps
                                                         onClick={() =>
                                                             handleDeleteClick(
                                                                 schedule.id,
-                                                                `${schedule.subject?.name} (${schedule.exam_date})`
+                                                                `${schedule.subject?.name} (${formatWhen(schedule.exam_date)})`
                                                             )
                                                         }
                                                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"

@@ -4,13 +4,6 @@ use App\Http\Controllers\Academic\AcademicYearController;
 use App\Http\Controllers\Academic\ClassController;
 use App\Http\Controllers\Academic\SectionController;
 use App\Http\Controllers\Academic\SubjectController;
-use App\Http\Controllers\Coaching\BatchController;
-use App\Http\Controllers\Coaching\BatchEnrollmentController;
-use App\Http\Controllers\Coaching\CourseController;
-use App\Http\Controllers\Coaching\CoachingFeeController;
-use App\Http\Controllers\Coaching\TeacherPayoutController;
-use App\Http\Controllers\Coaching\ModelTestController;
-use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Accounting\AccountController;
 use App\Http\Controllers\Accounting\DashboardController as AccountingDashboardController;
 use App\Http\Controllers\Accounting\ExpenseCategoryController;
@@ -32,16 +25,18 @@ use App\Http\Controllers\Attendance\TeacherAttendanceController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Coaching\BatchController;
+use App\Http\Controllers\Coaching\BatchEnrollmentController;
+use App\Http\Controllers\Coaching\CoachingFeeController;
+use App\Http\Controllers\Coaching\CourseController;
+use App\Http\Controllers\Coaching\ModelTestController;
+use App\Http\Controllers\Coaching\TeacherPayoutController;
 use App\Http\Controllers\Communication\EventController;
 use App\Http\Controllers\Communication\MessageController;
 use App\Http\Controllers\Communication\NoticeController;
 use App\Http\Controllers\Communication\NotificationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceSettingController;
-use App\Http\Controllers\Leave\LeaveApplicationController;
-use App\Http\Controllers\Leave\LeaveReportController;
-use App\Http\Controllers\Leave\LeaveTypeController;
-use App\Http\Controllers\Teacher\TeacherLeaveController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\Exam\ExamHallController;
 use App\Http\Controllers\Exam\ExamInvigilatorController;
@@ -54,8 +49,12 @@ use App\Http\Controllers\Fee\FeeCollectionController;
 use App\Http\Controllers\Fee\FeeStructureController;
 use App\Http\Controllers\Fee\FeeTypeController;
 use App\Http\Controllers\Fee\FeeWaiverController;
+use App\Http\Controllers\Leave\LeaveApplicationController;
+use App\Http\Controllers\Leave\LeaveReportController;
+use App\Http\Controllers\Leave\LeaveTypeController;
 use App\Http\Controllers\Library\BookController;
 use App\Http\Controllers\Library\BookIssueController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OtherStaffAttendanceController;
 use App\Http\Controllers\OtherStaffController;
 use App\Http\Controllers\PermissionController;
@@ -69,10 +68,10 @@ use App\Http\Controllers\Student\StudentDocumentController;
 use App\Http\Controllers\Student\StudentParentController;
 use App\Http\Controllers\Student\StudentPromotionController;
 use App\Http\Controllers\Teacher\TeacherController;
+use App\Http\Controllers\Teacher\TeacherLeaveController;
 use App\Http\Controllers\Teacher\TeacherSubjectController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 // ============================================
 // PUBLIC ROUTES
@@ -81,7 +80,7 @@ Route::get('/', function () {
     try {
         $isSetupCompleted = (bool) \App\Models\Setting::get('is_setup_completed', false)
             && \App\Models\User::active()
-                ->whereHas('roles', fn($q) => $q->whereIn('slug', ['super-admin', 'super_admin']))
+                ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['super-admin', 'super_admin']))
                 ->exists();
     } catch (\Throwable $e) {
         // DB not ready yet (fresh migration), go to setup
@@ -89,7 +88,7 @@ Route::get('/', function () {
     }
 
     // Setup not done → show the wizard
-    if (!$isSetupCompleted) {
+    if (! $isSetupCompleted) {
         return app(\App\Http\Controllers\OnboardingController::class)->show();
     }
 
@@ -108,7 +107,7 @@ Route::get('/offline', function () {
 
 Route::get('/sw.js', function () {
     $path = public_path('build/sw.js');
-    if (!file_exists($path)) {
+    if (! file_exists($path)) {
         $path = public_path('sw.js');
     }
     if (file_exists($path)) {
@@ -124,10 +123,11 @@ Route::get('/sw.js', function () {
 // PWA Manifest and Asset Fallback Routes (Ensures 100% Hostinger & Reverse Proxy compatibility)
 Route::get('/manifest.webmanifest', function () {
     $path = public_path('manifest.webmanifest');
-    if (!file_exists($path)) {
+    if (! file_exists($path)) {
         $path = base_path('manifest.webmanifest');
     }
     abort_unless(file_exists($path), 404);
+
     return response()->file($path, [
         'Content-Type' => 'application/manifest+json; charset=utf-8',
         'Cache-Control' => 'public, max-age=3600',
@@ -136,10 +136,11 @@ Route::get('/manifest.webmanifest', function () {
 
 Route::get('/manifest.json', function () {
     $path = public_path('manifest.json');
-    if (!file_exists($path)) {
+    if (! file_exists($path)) {
         $path = base_path('manifest.json');
     }
     abort_unless(file_exists($path), 404);
+
     return response()->file($path, [
         'Content-Type' => 'application/manifest+json; charset=utf-8',
         'Cache-Control' => 'public, max-age=3600',
@@ -149,15 +150,17 @@ Route::get('/manifest.json', function () {
 Route::get('/.well-known/assetlinks.json', function () {
     $path = public_path('.well-known/assetlinks.json');
     abort_unless(file_exists($path), 404);
+
     return response()->file($path, [
         'Content-Type' => 'application/json; charset=utf-8',
     ]);
 });
 
 Route::get('/pwa/{any}', function ($any) {
-    $path = public_path('pwa/' . $any);
+    $path = public_path('pwa/'.$any);
     abort_unless(file_exists($path), 404);
     $mime = str_ends_with($path, '.png') ? 'image/png' : (str_ends_with($path, '.json') ? 'application/json' : 'application/octet-stream');
+
     return response()->file($path, [
         'Content-Type' => $mime,
         'Cache-Control' => 'public, max-age=604800',
@@ -200,8 +203,9 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
     // ADMIN ROUTES (User, Role, Permission Management)
     // ============================================
     Route::middleware(['role:Super Admin,Admin'])->group(function () {
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::resource('users', UserController::class);
-        Route::resource('roles', RoleController::class)->except(['show']);
+        Route::resource('roles', RoleController::class);
         Route::resource('permissions', PermissionController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::post('permissions/sync', [PermissionController::class, 'sync'])->name('permissions.sync');
     });
@@ -245,6 +249,10 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::resource('students', StudentController::class);
         Route::get('students/sections/{classId}', [StudentController::class, 'getSections'])->name('students.sections');
 
+        Route::get('student-parents/search-guardians', [StudentParentController::class, 'searchGuardians'])->name('student-parents.search-guardians');
+        Route::get('student-parents/check-duplicate', [StudentParentController::class, 'checkDuplicate'])->name('student-parents.check-duplicate');
+        Route::post('student-parents/quick-assign', [StudentParentController::class, 'quickAssign'])->name('student-parents.quick-assign');
+        Route::post('student-parents/bulk-generate', [StudentParentController::class, 'bulkGenerate'])->name('student-parents.bulk-generate');
         Route::resource('student-parents', StudentParentController::class);
 
         Route::get('students/{student}/documents', [StudentDocumentController::class, 'index'])->name('student-documents.index');
@@ -422,6 +430,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::get('overdue-fees', [\App\Http\Controllers\Fee\OverdueController::class, 'index'])
             ->middleware('auto.fees')
             ->name('overdue-fees.index');
+        Route::get('overdue-fees/export', [\App\Http\Controllers\Fee\OverdueController::class, 'export'])->name('overdue-fees.export');
         Route::post('overdue-fees/reminder', [\App\Http\Controllers\Fee\OverdueController::class, 'sendReminder'])->name('overdue-fees.reminder');
         Route::post('overdue-fees/bulk-reminder', [\App\Http\Controllers\Fee\OverdueController::class, 'bulkReminder'])->name('overdue-fees.bulk-reminder');
         Route::post('overdue-fees/mark-paid', [\App\Http\Controllers\Fee\OverdueController::class, 'markPaid'])->name('overdue-fees.mark-paid');
@@ -717,9 +726,11 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::post('/profile/photo', [\App\Http\Controllers\Parent\ParentProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::put('/profile/password', [\App\Http\Controllers\Parent\ParentProfileController::class, 'updatePassword'])->name('profile.password');
 
-        // Children Management
+        // Children. The list lives on the dashboard; this URL stays for old links.
         Route::get('/children', [\App\Http\Controllers\Parent\ParentStudentController::class, 'index'])->name('children.index');
         Route::get('/children/{student}', [\App\Http\Controllers\Parent\ParentStudentController::class, 'show'])->name('children.show');
+
+        Route::get('/calendar', [\App\Http\Controllers\Parent\ParentCalendarController::class, 'index'])->name('calendar.index');
 
         // Attendance Viewing
         Route::get('/attendance', [\App\Http\Controllers\Parent\ParentAttendanceController::class, 'index'])->name('attendance.index');
@@ -732,6 +743,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         // Fees
         Route::get('/fees', [\App\Http\Controllers\Parent\ParentFeeController::class, 'index'])->name('fees.index');
         Route::get('/fees/{feeCollection}', [\App\Http\Controllers\Parent\ParentFeeController::class, 'show'])->name('fees.show');
+        Route::get('/fees/{feeCollection}/receipt', [\App\Http\Controllers\Parent\ParentFeeController::class, 'receipt'])->name('fees.receipt');
 
         // Messages
         Route::get('/messages', [\App\Http\Controllers\Parent\ParentMessageController::class, 'index'])->name('messages.index');

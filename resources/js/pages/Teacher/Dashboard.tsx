@@ -1,6 +1,6 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     BookOpen,
     Users,
@@ -10,14 +10,19 @@ import {
     Bell,
     Calendar,
     AlertCircle,
-    CheckCircle,
+    CheckCircle2,
     TrendingUp,
     Clock,
-    ArrowRight,
-    Sparkles,
+    ChevronRight,
     Award,
-    CalendarClock
+    CalendarDays,
+    CalendarClock,
+    User,
+    GraduationCap,
+    MapPin,
+    ArrowUpRight
 } from 'lucide-react';
+import { useInstitute } from '@/hooks/useInstitute';
 
 interface Teacher {
     id: number;
@@ -92,416 +97,442 @@ interface Props {
 
 export default function Dashboard({
     teacher,
-    todaySchedule,
-    assignedSubjects,
-    attendanceSummary,
-    pendingMarks,
-    recentNotices,
-    invigilationDuties,
-    unreadMessages,
-    myAttendance
+    todaySchedule = [],
+    assignedSubjects = [],
+    attendanceSummary = [],
+    pendingMarks = [],
+    recentNotices = [],
+    invigilationDuties = [],
+    unreadMessages = 0,
+    myAttendance = { present: 0, absent: 0, late: 0, total_days: 0 }
 }: Props) {
+    const institute = useInstitute();
+
     const attendancePercentage = myAttendance.total_days > 0
-        ? ((myAttendance.present / myAttendance.total_days) * 100).toFixed(0)
+        ? Math.round((myAttendance.present / myAttendance.total_days) * 100)
         : 0;
 
+    const formattedToday = new Date().toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Teacher Dashboard
-                </h2>
-            }
-        >
-            <Head title="Teacher Dashboard" />
+        <AuthenticatedLayout>
+            <Head title={`Faculty Portal - ${teacher.full_name}`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-8 animate-fade-in">
-                    {/* Welcome Header with Gradient */}
-                    <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white shadow-xl sm:shadow-2xl relative overflow-hidden">
-                        <div className="absolute inset-0 bg-grid-white/10"></div>
-                        <div className="relative z-10">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3 sm:gap-4">
-                                    <div className="flex-shrink-0">
-                                        {teacher.photo ? (
-                                            <img
-                                                src={`/storage/${teacher.photo}`}
-                                                alt={teacher.full_name}
-                                                className="h-14 w-14 sm:h-20 sm:w-20 rounded-full object-cover border-2 sm:border-4 border-white/30 shadow-lg"
-                                            />
-                                        ) : (
-                                            <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-white/20 border-2 sm:border-4 border-white/30 flex items-center justify-center text-white text-xl sm:text-3xl font-bold shadow-lg">
-                                                {teacher.full_name.charAt(0)}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                                            <Sparkles className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-300 animate-pulse" />
-                                            <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold drop-shadow-lg">Welcome, {teacher.full_name}!</h1>
-                                        </div>
-                                        <p className="text-white/90 text-xs sm:text-base font-medium">
-                                            {teacher.designation} • {teacher.department} • {teacher.employee_id}
-                                        </p>
-                                    </div>
+            <div className="space-y-4 pb-8">
+                {/* 1. EXECUTIVE HEADER & FACULTY IDENTITY CARD */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-4">
+                        <div className="relative shrink-0">
+                            {teacher.photo ? (
+                                <img
+                                    src={`/storage/${teacher.photo}`}
+                                    alt={teacher.full_name}
+                                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover ring-2 ring-indigo-50 border border-slate-200"
+                                />
+                            ) : (
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-linear-to-br from-indigo-50 to-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xl border border-indigo-200/70">
+                                    {teacher.full_name?.charAt(0)?.toUpperCase() || 'T'}
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                    <Link href="/teacher/leaves" className="w-full sm:w-auto">
-                                        <button className="w-full sm:w-auto bg-emerald-500/90 hover:bg-emerald-500 text-white px-4 py-2 sm:px-5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 border border-white/20 shadow-lg flex items-center justify-center gap-1.5">
-                                            <CalendarClock className="w-4 h-4" />
-                                            Apply Leave
-                                        </button>
-                                    </Link>
-                                    <Link href="/teacher/profile" className="w-full sm:w-auto">
-                                        <button className="w-full sm:w-auto bg-white/20 backdrop-blur-sm text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold hover:bg-white/30 transition-all duration-300 border border-white/30 shadow-lg">
-                                            View Profile
-                                        </button>
-                                    </Link>
-                                </div>
+                            )}
+                            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300" title="Active Faculty" />
+                        </div>
+
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight truncate">
+                                    {teacher.full_name}
+                                </h1>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <GraduationCap className="w-3 h-3" />
+                                    {teacher.designation}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                    Dept: {teacher.department || 'General'}
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                                <span>Employee ID: <strong className="text-slate-700 font-mono font-medium">{teacher.employee_id}</strong></span>
+                                <span className="hidden sm:inline text-slate-300">•</span>
+                                <span>Institute: <strong className="text-slate-700 font-medium">{institute.name || 'Porua ERP'}</strong></span>
+                                <span className="hidden sm:inline text-slate-300">•</span>
+                                <span className="text-slate-600 font-medium">{formattedToday}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-                        {/* Assigned Subjects */}
-                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-white/50 group">
-                            <div className="flex items-start justify-between mb-3 sm:mb-4">
-                                <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-md group-hover:scale-110 transition-transform duration-300">
-                                    <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                                </div>
-                            </div>
-                            <h3 className="text-gray-600 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">Assigned Subjects</h3>
-                            <p className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                                {assignedSubjects.length}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1 sm:mt-2">Active subjects</p>
-                        </div>
-
-                        {/* My Attendance */}
-                        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-white/50 group">
-                            <div className="flex items-start justify-between mb-3 sm:mb-4">
-                                <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-md group-hover:scale-110 transition-transform duration-300">
-                                    <ClipboardCheck className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                                </div>
-                                <div className="flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold bg-green-100 text-green-700">
-                                    <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                    Good
-                                </div>
-                            </div>
-                            <h3 className="text-gray-600 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">My Attendance</h3>
-                            <p className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
-                                {attendancePercentage}%
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1 sm:mt-2">{myAttendance.present}/{myAttendance.total_days} days</p>
-                        </div>
-
-                        {/* Pending Marks */}
-                        <div className={`bg-gradient-to-br ${pendingMarks.length > 0 ? 'from-orange-50 to-red-50' : 'from-gray-50 to-gray-100'} rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-white/50 group`}>
-                            <div className="flex items-start justify-between mb-3 sm:mb-4">
-                                <div className={`bg-gradient-to-br ${pendingMarks.length > 0 ? 'from-orange-500 to-red-500' : 'from-gray-400 to-gray-500'} p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                                    <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                                </div>
-                                {pendingMarks.length > 0 && (
-                                    <div className="flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold bg-orange-100 text-orange-700">
-                                        <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                        Pending
-                                    </div>
-                                )}
-                            </div>
-                            <h3 className="text-gray-600 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">Pending Marks</h3>
-                            <p className={`text-3xl sm:text-4xl font-extrabold bg-gradient-to-r ${pendingMarks.length > 0 ? 'from-orange-500 to-red-500' : 'from-gray-400 to-gray-500'} bg-clip-text text-transparent`}>
-                                {pendingMarks.length}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1 sm:mt-2">
-                                {pendingMarks.length > 0 ? 'Entries pending' : 'All updated'}
-                            </p>
-                        </div>
-
-                        {/* Unread Messages */}
-                        <div className={`bg-gradient-to-br ${unreadMessages > 0 ? 'from-purple-50 to-pink-50' : 'from-gray-50 to-gray-100'} rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-white/50 group`}>
-                            <div className="flex items-start justify-between mb-3 sm:mb-4">
-                                <div className={`bg-gradient-to-br ${unreadMessages > 0 ? 'from-purple-500 to-pink-500' : 'from-gray-400 to-gray-500'} p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                                    <Mail className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                                </div>
-                                {unreadMessages > 0 && (
-                                    <div className="flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold bg-purple-100 text-purple-700">
-                                        <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                        New
-                                    </div>
-                                )}
-                            </div>
-                            <h3 className="text-gray-600 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">Unread Messages</h3>
-                            <p className={`text-3xl sm:text-4xl font-extrabold bg-gradient-to-r ${unreadMessages > 0 ? 'from-purple-500 to-pink-500' : 'from-gray-400 to-gray-500'} bg-clip-text text-transparent`}>
-                                {unreadMessages}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1 sm:mt-2">New messages</p>
-                        </div>
-                    </div>
-
-                    {/* Today's Schedule */}
-                    {todaySchedule.length > 0 && (
-                        <div className="bg-white rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl p-4 sm:p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-                            <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl">
-                                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                                </div>
-                                <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Today's Schedule</h2>
-                            </div>
-                            <div className="space-y-2.5 sm:space-y-3">
-                                {todaySchedule.map((schedule, index) => (
-                                    <div key={index} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl sm:rounded-2xl hover:shadow-md transition-all duration-300 border border-gray-100 group">
-                                        <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-2.5 sm:p-3 rounded-xl text-white min-w-[70px] sm:min-w-[80px] text-center group-hover:scale-105 transition-transform duration-300 shadow-md">
-                                            <p className="text-xs sm:text-sm font-bold">{schedule.time}</p>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-sm sm:text-base text-gray-900 group-hover:text-blue-600 transition-colors truncate">{schedule.subject}</h4>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
-                                                Class {schedule.class} - {schedule.section} • Room {schedule.room}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="grid gap-4 sm:gap-8 lg:grid-cols-2">
-                        {/* Pending Mark Entries */}
-                        {pendingMarks.length > 0 && (
-                            <div className="bg-white rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl p-4 sm:p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-                                <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                    <div className="bg-gradient-to-br from-orange-500 to-red-500 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl">
-                                        <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Pending Mark Entries</h2>
-                                        <p className="text-xs sm:text-sm text-gray-600">Complete these mark entries</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-2.5 sm:space-y-3">
-                                    {pendingMarks.map((mark, index) => (
-                                        <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl sm:rounded-2xl hover:shadow-md transition-all duration-300 border border-orange-200 group">
-                                            <div className="flex items-start justify-between mb-2 sm:mb-3">
-                                                <div>
-                                                    <h4 className="font-bold text-sm sm:text-base text-gray-900 group-hover:text-orange-600 transition-colors">{mark.exam_name}</h4>
-                                                    <p className="text-xs sm:text-sm text-gray-600 mt-0.5">{mark.subject}</p>
-                                                    <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">Class {mark.class} - {mark.section}</p>
-                                                </div>
-                                                <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-bold shadow-md">
-                                                    {mark.pending} pending
-                                                </div>
-                                            </div>
-                                            <div className="text-xs text-gray-600 flex items-center gap-2">
-                                                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300"
-                                                        style={{ width: `${(mark.entered / mark.total) * 100}%` }}
-                                                    ></div>
-                                                </div>
-                                                <span className="font-semibold text-xs">{mark.entered}/{mark.total}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <Link href="/teacher/exams">
-                                    <button className="w-full mt-4 bg-gradient-to-r from-orange-500 to-red-500 text-white py-2.5 sm:py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 text-xs sm:text-sm">
-                                        Go to Exams
-                                    </button>
-                                </Link>
-                            </div>
+                    <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+                        {unreadMessages > 0 && (
+                            <Link
+                                href="/teacher/messages"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors"
+                            >
+                                <Mail className="w-3.5 h-3.5" />
+                                {unreadMessages} Messages
+                            </Link>
                         )}
+                        <Link
+                            href="/teacher/leaves"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                        >
+                            <CalendarClock className="w-3.5 h-3.5" />
+                            Apply Leave
+                        </Link>
+                        <Link
+                            href="/teacher/profile"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                        >
+                            <User className="w-3.5 h-3.5 text-slate-500" />
+                            Profile
+                        </Link>
+                    </div>
+                </div>
 
-                        {/* Today's Attendance Summary */}
-                        {attendanceSummary.length > 0 && (
-                            <div className="bg-white rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl p-4 sm:p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-                                <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                    <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl">
-                                        <ClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                                    </div>
-                                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Today's Attendance</h2>
-                                </div>
-                                <div className="space-y-2.5 sm:space-y-3">
-                                    {attendanceSummary.map((summary, index) => (
-                                        <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl sm:rounded-2xl hover:shadow-md transition-all duration-300 border border-gray-100 group">
-                                            <div className="flex items-center justify-between mb-2 sm:mb-3">
-                                                <div>
-                                                    <p className="font-bold text-sm sm:text-base text-gray-900 group-hover:text-green-600 transition-colors">
-                                                        Class {summary.class} - {summary.section}
+                {/* 2. FOUR HIGH-DENSITY METRIC CARDS */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs hover:border-slate-300 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-500">Assigned Subjects</span>
+                            <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <BookOpen className="w-3.5 h-3.5" />
+                            </div>
+                        </div>
+                        <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            {assignedSubjects.length}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                            Active course allocations
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs hover:border-slate-300 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-500">Today's Classes</span>
+                            <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                                <Clock className="w-3.5 h-3.5" />
+                            </div>
+                        </div>
+                        <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            {todaySchedule.length}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                            Scheduled periods today
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs hover:border-slate-300 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-500">Pending Mark Entry</span>
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${pendingMarks.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                <FileText className="w-3.5 h-3.5" />
+                            </div>
+                        </div>
+                        <div className={`text-xl sm:text-2xl font-bold tracking-tight ${pendingMarks.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                            {pendingMarks.length}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                            {pendingMarks.length > 0 ? 'Entries awaiting submission' : 'All gradebooks updated'}
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs hover:border-slate-300 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-500">My Attendance</span>
+                            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <ClipboardCheck className="w-3.5 h-3.5" />
+                            </div>
+                        </div>
+                        <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            {attendancePercentage}%
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                            <strong className="text-emerald-700 font-medium">{myAttendance.present}</strong> present of {myAttendance.total_days} working days
+                        </p>
+                    </div>
+                </div>
+
+                {/* 3. QUICK OPERATIONS BAR */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                    <Link
+                        href="/teacher/attendance/mark"
+                        className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center text-center group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                            <ClipboardCheck className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-800">Mark Attendance</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Rapid batch marking</span>
+                    </Link>
+
+                    <Link
+                        href="/teacher/exams"
+                        className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center text-center group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                            <FileText className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-800">Enter Marks</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Gradebook entries</span>
+                    </Link>
+
+                    <Link
+                        href="/teacher/students"
+                        className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center text-center group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                            <Users className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-800">Class Students</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Rosters & 360 insights</span>
+                    </Link>
+
+                    <Link
+                        href="/teacher/leaves"
+                        className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center text-center group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                            <CalendarClock className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-800">Leaves</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Apply & balances</span>
+                    </Link>
+
+                    <Link
+                        href="/teacher/attendance/my"
+                        className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center text-center group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                            <CalendarDays className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-800">My Attendance</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Personal check-in log</span>
+                    </Link>
+
+                    <Link
+                        href="/teacher/messages"
+                        className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center text-center group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                            <Mail className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-800">Messages</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Guardian & staff chat</span>
+                    </Link>
+                </div>
+
+                {/* 4. MAIN 2-COLUMN SECTION: TEACHING OPERATIONS & LOGS */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Left: Today's Teaching Schedule */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                        <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-indigo-600" />
+                                <h3 className="text-sm font-semibold text-slate-900">Today's Class Timetable</h3>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-500">
+                                {todaySchedule.length} Periods Today
+                            </span>
+                        </div>
+                        <div className="p-4">
+                            {todaySchedule && todaySchedule.length > 0 ? (
+                                <div className="space-y-2.5">
+                                    {todaySchedule.map((schedule, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="p-3 rounded-lg border border-slate-200/70 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold font-mono shrink-0">
+                                                    {schedule.time}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-900 truncate">
+                                                        {schedule.subject}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                                        Class {schedule.class} - {schedule.section} • Room: <strong className="text-slate-700 font-medium">{schedule.room || 'Main Hall'}</strong>
                                                     </p>
                                                 </div>
-                                                <div className="bg-gradient-to-br from-green-500 to-emerald-500 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md">
-                                                    {summary.present}/{summary.total}
-                                                </div>
                                             </div>
-                                            <div className="flex justify-between text-xs sm:text-sm">
-                                                <span className="text-green-600 font-semibold">✓ Present: {summary.present}</span>
-                                                <span className="text-red-600 font-semibold">✗ Absent: {summary.absent}</span>
-                                            </div>
+                                            <Link
+                                                href="/teacher/attendance/mark"
+                                                className="px-2.5 py-1 rounded text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors shrink-0"
+                                            >
+                                                Mark Class
+                                            </Link>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-xs text-slate-500 font-medium">No teaching periods scheduled for today</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                        {/* Invigilation Duties */}
-                        {invigilationDuties.length > 0 && (
-                            <div className="bg-white rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl p-4 sm:p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-                                <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                    <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl">
-                                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                                    </div>
-                                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Invigilation Duties</h2>
-                                </div>
-                                <div className="space-y-2.5 sm:space-y-3">
-                                    {invigilationDuties.map((duty, index) => (
-                                        <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl sm:rounded-2xl hover:shadow-md transition-all duration-300 border border-purple-200 group">
-                                            <h4 className="font-bold text-sm sm:text-base text-gray-900 group-hover:text-purple-600 transition-colors mb-1 sm:mb-2">{duty.exam_name}</h4>
-                                            <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">{duty.subject}</p>
-                                            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                                                <div className="flex items-center gap-1.5 sm:gap-2">
-                                                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600" />
-                                                    <span className="text-gray-700 truncate">{duty.exam_date}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 sm:gap-2">
-                                                    <Clock className="w-4 h-4 text-purple-600" />
-                                                    <span className="text-gray-700">{duty.start_time} - {duty.end_time}</span>
-                                                </div>
-                                                <div className="col-span-2 flex items-center gap-2 bg-white/50 p-2 rounded-lg">
-                                                    <Award className="w-4 h-4 text-purple-600" />
-                                                    <span className="text-gray-700 font-semibold">Hall: {duty.hall_name}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                    {/* Right: Pending Mark Entries */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                        <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-amber-500" />
+                                <h3 className="text-sm font-semibold text-slate-900">Pending Mark Entries</h3>
                             </div>
-                        )}
-
-                        {/* Recent Notices */}
-                        {recentNotices.length > 0 && (
-                            <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-3 rounded-2xl">
-                                            <Bell className="w-6 h-6 text-white" />
-                                        </div>
-                                        <h2 className="text-2xl font-bold text-gray-900">Recent Notices</h2>
-                                    </div>
-                                    <Link href="/teacher/notices">
-                                        <button className="text-blue-600 hover:text-purple-600 font-semibold flex items-center gap-2 hover:gap-3 transition-all duration-200">
-                                            View All
-                                            <ArrowRight className="w-5 h-5" />
-                                        </button>
-                                    </Link>
-                                </div>
+                            <Link
+                                href="/teacher/exams"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                            >
+                                All Exams <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+                        <div className="p-4">
+                            {pendingMarks && pendingMarks.length > 0 ? (
                                 <div className="space-y-3">
+                                    {pendingMarks.map((mark, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="p-3 rounded-lg border border-slate-200/70 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-2"
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-slate-900">{mark.exam_name}</h4>
+                                                    <p className="text-[11px] text-slate-500">
+                                                        {mark.subject} • Class {mark.class} ({mark.section})
+                                                    </p>
+                                                </div>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    {mark.pending} Pending
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                                    <div
+                                                        className="bg-indigo-600 h-1.5 rounded-full"
+                                                        style={{ width: `${mark.total > 0 ? (mark.entered / mark.total) * 100 : 0}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-[11px] font-mono text-slate-600 font-semibold shrink-0">
+                                                    {mark.entered}/{mark.total} Marked
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                                    <p className="text-xs text-slate-600 font-medium">All marks submissions are complete</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 5. BOTTOM 2-COLUMN SECTION: ATTENDANCE SUMMARY & NOTICES / DUTIES */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Left: Today's Classroom Attendance Status */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                        <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+                                <h3 className="text-sm font-semibold text-slate-900">Today's Class Attendance Status</h3>
+                            </div>
+                            <Link
+                                href="/teacher/attendance/mark"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                            >
+                                Mark Class <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+                        <div className="p-4">
+                            {attendanceSummary && attendanceSummary.length > 0 ? (
+                                <div className="space-y-2.5">
+                                    {attendanceSummary.map((sum, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="p-3 rounded-lg border border-slate-200/70 bg-slate-50/50 flex items-center justify-between gap-3 text-xs"
+                                        >
+                                            <div>
+                                                <p className="font-bold text-slate-900">Class {sum.class} - {sum.section}</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                                    <span className="text-emerald-700 font-semibold">{sum.present} Present</span> • <span className="text-rose-600 font-semibold">{sum.absent} Absent</span>
+                                                </p>
+                                            </div>
+                                            <span className="font-mono font-bold text-slate-800 bg-white px-2.5 py-1 rounded border border-slate-200">
+                                                {sum.present} / {sum.total}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <ClipboardCheck className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-xs text-slate-500 font-medium">No class attendance recorded yet today</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right: Invigilation Duties or Notices */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                        <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Bell className="w-4 h-4 text-indigo-600" />
+                                <h3 className="text-sm font-semibold text-slate-900">Faculty Notices & Circulars</h3>
+                            </div>
+                            <Link
+                                href="/teacher/notices"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                            >
+                                View All <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+                        <div className="p-4">
+                            {recentNotices && recentNotices.length > 0 ? (
+                                <div className="space-y-2.5">
                                     {recentNotices.map((notice) => (
                                         <Link
                                             key={notice.id}
                                             href={`/teacher/notices/${notice.id}`}
+                                            className="p-3 rounded-lg border border-slate-200/70 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-start gap-3 group block"
                                         >
-                                            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-2xl hover:shadow-md transition-all duration-300 border border-gray-100 group cursor-pointer">
-                                                <div className="bg-blue-100 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                                    <Bell className="w-6 h-6 text-blue-600" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-start justify-between">
-                                                        <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors flex-1">
-                                                            {notice.title}
-                                                        </h4>
-                                                        {notice.priority === 'urgent' && (
-                                                            <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg ml-2">
-                                                                Urgent
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-sm text-gray-600 mt-2 flex items-center gap-1">
-                                                        <Clock className="w-4 h-4" />
-                                                        {notice.publish_date}
+                                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+                                                <FileText className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                                                        {notice.title}
                                                     </p>
+                                                    {notice.priority === 'urgent' && (
+                                                        <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 uppercase tracking-wider shrink-0">
+                                                            Urgent
+                                                        </span>
+                                                    )}
                                                 </div>
+                                                <p className="text-[11px] text-slate-500 mt-1">
+                                                    Published: {notice.publish_date}
+                                                </p>
                                             </div>
                                         </Link>
                                     ))}
                                 </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="bg-gradient-to-r from-gray-50 to-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Award className="w-8 h-8 text-purple-600" />
-                            <h2 className="text-2xl font-bold text-gray-900">Quick Actions</h2>
-                        </div>
-                        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-                            <Link href="/teacher/attendance/mark">
-                                <button className="bg-gradient-to-br from-green-500 to-emerald-500 text-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group w-full">
-                                    <ClipboardCheck className="w-8 h-8 mb-3 mx-auto group-hover:scale-110 transition-transform" />
-                                    <p className="font-bold text-lg">Mark Attendance</p>
-                                </button>
-                            </Link>
-                            <Link href="/teacher/exams/marks/entry">
-                                <button className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group w-full">
-                                    <FileText className="w-8 h-8 mb-3 mx-auto group-hover:scale-110 transition-transform" />
-                                    <p className="font-bold text-lg">Enter Marks</p>
-                                </button>
-                            </Link>
-                            <Link href="/teacher/students">
-                                <button className="bg-gradient-to-br from-purple-500 to-pink-500 text-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group w-full">
-                                    <Users className="w-8 h-8 mb-3 mx-auto group-hover:scale-110 transition-transform" />
-                                    <p className="font-bold text-lg">View Students</p>
-                                </button>
-                            </Link>
-                            <Link href="/teacher/messages">
-                                <button className="bg-gradient-to-br from-orange-500 to-red-500 text-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group w-full relative">
-                                    <Mail className="w-8 h-8 mb-3 mx-auto group-hover:scale-110 transition-transform" />
-                                    <p className="font-bold text-lg">Messages</p>
-                                    {unreadMessages > 0 && (
-                                        <div className="absolute top-2 right-2 bg-white text-red-600 h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg animate-pulse">
-                                            {unreadMessages}
-                                        </div>
-                                    )}
-                                </button>
-                            </Link>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-xs text-slate-500 font-medium">No faculty notices published</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
-
-            <style>{`
-                @keyframes fade-in {
-                    from {
-                        opacity: 0;
-                    }
-                    to {
-                        opacity: 1;
-                    }
-                }
-                @keyframes scale-in {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.9);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
-                .animate-fade-in {
-                    animation: fade-in 0.6s ease-out;
-                }
-                .animate-scale-in {
-                    animation: scale-in 0.5s ease-out both;
-                }
-                .bg-grid-white\\/10 {
-                    background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-                                      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-                    background-size: 20px 20px;
-                }
-            `}</style>
         </AuthenticatedLayout>
     );
 }

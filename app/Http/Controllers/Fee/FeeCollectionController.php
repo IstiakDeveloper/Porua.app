@@ -105,8 +105,7 @@ class FeeCollectionController extends Controller
                             ->orWhereHas('student', fn ($s) => $s->where('admission_number', 'like', "%{$search}%")->orWhere('roll_number', 'like', "%{$search}%"));
                     });
                 })
-                ->orderBy('year', 'desc')
-                ->orderBy('month', 'desc')
+                ->orderBy('created_at', 'desc')
                 ->orderBy('id', 'desc');
 
             $collections = $duesQuery->paginate(20)->withQueryString()->through(function ($fee) {
@@ -131,6 +130,7 @@ class FeeCollectionController extends Controller
                     'discount' => (float) $fee->discount,
                     'total_amount' => (float) $fee->total_amount,
                     'due_date' => $fee->due_date ? Carbon::parse($fee->due_date)->format('d M Y') : null,
+                    'created_at' => $fee->created_at ? Carbon::parse($fee->created_at)->format('d M Y h:i A') : null,
                     'status' => $fee->status,
                 ];
             });
@@ -159,13 +159,16 @@ class FeeCollectionController extends Controller
                             ->orWhere('receipt_number', 'like', "%{$search}%");
                     });
                 })
-                ->latest('payment_date')
-                ->latest('id')
+                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->get();
 
             $groupedReceipts = $paidQuery->groupBy('receipt_number')->map(function ($group) {
-                $first = $group->first();
+                $sortedGroup = $group->sortByDesc('created_at')->sortByDesc('id');
+                $first = $sortedGroup->first();
                 $itemsCount = $group->count();
+                $maxId = $group->max('id');
+                $maxCreatedAt = $group->max('created_at');
 
                 $feeNames = $group->map(function ($f) {
                     $period = ($f->month && $f->year) ? Carbon::create($f->year, $f->month, 1)->format('M y') : null;
@@ -174,6 +177,11 @@ class FeeCollectionController extends Controller
 
                 return [
                     'id' => $first->id,
+                    'max_id' => $maxId,
+                    'created_at_raw' => $maxCreatedAt ? Carbon::parse($maxCreatedAt)->timestamp : 0,
+                    'created_at' => $first->created_at ? Carbon::parse($first->created_at)->format('d M Y h:i A') : null,
+                    'created_date' => $first->created_at ? Carbon::parse($first->created_at)->format('d M Y') : null,
+                    'created_time' => $first->created_at ? Carbon::parse($first->created_at)->format('h:i A') : null,
                     'receipt_number' => $first->receipt_number,
                     'student_name' => $first->student->user->name ?? 'N/A',
                     'admission_number' => $first->student->admission_number ?? 'N/A',
@@ -192,7 +200,9 @@ class FeeCollectionController extends Controller
                     'collector_name' => $first->collector->name ?? 'Cashier',
                     'status' => 'paid',
                 ];
-            })->values();
+            })
+            ->sortByDesc(fn ($item) => [$item['created_at_raw'], $item['max_id']])
+            ->values();
 
             $page = (int) $request->get('page', 1);
             $perPage = 20;
@@ -433,7 +443,11 @@ class FeeCollectionController extends Controller
                     $month = intval($feeData['month']);
                     $year = intval($feeData['year']);
 
-                    $feeAmount = floatval($feeStructure->amount);
+                    $isMonthly = ($feeStructure->feeType->frequency ?? '') === 'monthly';
+                    $feeAmount = ($isMonthly && $student->monthly_fee !== null && (float) $student->monthly_fee > 0)
+                        ? floatval($student->monthly_fee)
+                        : floatval($feeStructure->amount);
+
                     $feeDiscount = $usesPerFeeDiscounts
                         ? floatval($feeData['discount'] ?? 0)
                         : ($newFeeCount > 0 ? $newDiscountPool / $newFeeCount : 0);
@@ -454,7 +468,8 @@ class FeeCollectionController extends Controller
                         year: $year,
                         receiptNumber: $receiptNumber,
                         validated: $validated,
-                        feeDiscount: $feeDiscount
+                        feeDiscount: $feeDiscount,
+                        feeAmount: $feeAmount
                     );
 
                     $monthName = Carbon::create($year, $month, 1)->format('M Y');
@@ -1420,14 +1435,22 @@ class FeeCollectionController extends Controller
         int $year,
         string $receiptNumber,
         array $validated,
-        float $feeDiscount
+        float $feeDiscount,
+        ?float $feeAmount = null
     ): FeeCollection {
         if (FeeCollection::paidExistsForPeriod($studentId, $feeStructure->fee_type_id, $month, $year)) {
             $monthName = Carbon::create($year, $month, 1)->format('F Y');
             throw new \Exception("Fee '{$feeStructure->feeType->name}' for {$monthName} has already been paid.");
         }
 
-        $feeAmount = floatval($feeStructure->amount);
+        if ($feeAmount === null) {
+            $isMonthly = ($feeStructure->feeType->frequency ?? '') === 'monthly';
+            $student = Student::find($studentId);
+            $feeAmount = ($isMonthly && $student && $student->monthly_fee !== null && (float) $student->monthly_fee > 0)
+                ? floatval($student->monthly_fee)
+                : floatval($feeStructure->amount);
+        }
+
         if ($feeDiscount > $feeAmount) {
             $monthName = Carbon::create($year, $month, 1)->format('F Y');
             throw new \Exception("Discount cannot exceed fee amount for '{$feeStructure->feeType->name}' ({$monthName}).");

@@ -1,23 +1,22 @@
-import { Head, Link, router } from '@inertiajs/react';
+import React from 'react';
+import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/Card';
-import Badge from '@/Components/Badge';
-import Button from '@/Components/Button';
-import Select from '@/Components/Select';
-import { Calendar, TrendingUp, BookOpen, Clock } from 'lucide-react';
-
-interface Child {
-    id: number;
-    full_name: string;
-}
-
-interface Student {
-    id: number;
-    full_name: string;
-    roll_number: string;
-    class_name: string;
-    section_name: string;
-}
+import ParentPage from '@/Components/Parent/ParentPage';
+import ChildSwitcher, { ChildOption } from '@/Components/Parent/ChildSwitcher';
+import StatusPill from '@/Components/Parent/StatusPill';
+import EmptyState from '@/Components/Parent/EmptyState';
+import { formatClock, formatWhen } from '@/Components/Parent/format';
+import { route } from '@/Components/Parent/route';
+import {
+    Award,
+    Calendar,
+    Clock,
+    ChevronRight,
+    GraduationCap,
+    FileText,
+    CheckCircle2,
+    XCircle
+} from 'lucide-react';
 
 interface Exam {
     id: number;
@@ -27,199 +26,134 @@ interface Exam {
     end_time: string;
 }
 
-interface Result {
+interface ResultRow {
     id: number;
-    exam: {
-        name: string;
-    };
-    total_marks: number;
-    obtained_marks: number;
+    exam: { name: string };
     percentage: number;
     grade: string;
-    gpa: number;
     pass_status: string;
-    created_at: string;
 }
 
 interface Props {
-    student: Student;
-    children: Child[];
+    student: ChildOption | null;
+    children: ChildOption[];
     upcomingExams: Exam[];
-    results: Result[];
+    results: ResultRow[];
 }
 
-export default function Index({ student, children, upcomingExams, results }: Props) {
-    const handleStudentChange = (studentId: string) => {
-        router.get(route('parent.exams.index'), { student_id: studentId });
+export default function Index({ student, children, upcomingExams = [], results = [] }: Props) {
+    const getPassBadge = (status: string) => {
+        const isPass = status?.toLowerCase() === 'pass' || status?.toLowerCase() === 'passed';
+        return (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                isPass
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                    : 'bg-rose-50 text-rose-700 border-rose-200/80'
+            }`}>
+                {isPass ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <XCircle className="w-3 h-3 text-rose-600" />}
+                {isPass ? 'Passed' : 'Needs Retake'}
+            </span>
+        );
     };
 
     return (
         <AuthenticatedLayout>
-            <Head title="Exams & Results" />
+            <Head title="Exam Results & Schedule" />
 
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold">Exams & Results</h1>
-                        <p className="text-gray-600">View upcoming exams and published results</p>
-                    </div>
-
-                    {!student || children.length === 0 ? (
-                        <div className="bg-white rounded-xl shadow-xs border border-gray-100 p-12 text-center">
-                            <div className="w-16 h-16 mx-auto mb-4 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                                <BookOpen className="w-8 h-8" />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-800">No Student Linked Yet</h3>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                                There are currently no students linked to your parent account. Please contact school administration to link your child's profile.
-                            </p>
+            <ParentPage
+                title="Exams & Marksheets"
+                subtitle="Review upcoming examination schedules and published term marksheets"
+            >
+                {!student ? (
+                    <EmptyState
+                        icon={<Award className="h-7 w-7 text-indigo-500" />}
+                        title="No student linked yet"
+                        body="Ask the school to link your child before exam results can be shown here."
+                    />
+                ) : (
+                    <>
+                        {/* Child Switcher Toolbar */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-3 sm:p-4 shadow-2xs">
+                            <ChildSwitcher children={children} student={student} href={route('parent.exams.index')} />
                         </div>
-                    ) : (
-                        <>
-                    {/* Student Selector */}
-                    <Card className="mb-6">
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Select
-                                        label="Select Child"
-                                        value={student.id.toString()}
-                                        onChange={(e) => handleStudentChange(e.target.value)}
-                                        options={children.map((child) => ({
-                                            value: child.id.toString(),
-                                            label: child.full_name
-                                        }))}
-                                    />
-                                </div>
-                                <div className="flex items-end">
-                                    <div className="text-sm">
-                                        <p className="text-gray-600">Class</p>
-                                        <p className="font-medium">{student.class_name} - {student.section_name}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Upcoming Exams */}
-                        <div className="lg:col-span-1">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Upcoming Exams</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {upcomingExams.length > 0 ? (
-                                        <div className="space-y-3">
-                                            {upcomingExams.map((exam) => (
-                                                <Card key={exam.id} className="border">
-                                                    <CardContent className="p-4">
-                                                        <h4 className="font-semibold mb-2">{exam.name}</h4>
-                                                        <div className="space-y-1 text-sm text-gray-600">
-                                                            <div className="flex items-center gap-2">
-                                                                <Calendar className="h-4 w-4" />
-                                                                {new Date(exam.exam_date).toLocaleDateString()}
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Clock className="h-4 w-4" />
-                                                                {exam.start_time} - {exam.end_time}
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
+                        {/* 1. Upcoming Exams Schedule */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-3">
+                            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100">
+                                <Calendar className="w-4 h-4 text-indigo-600" />
+                                Upcoming Exam Schedule ({upcomingExams.length})
+                            </h2>
+
+                            {upcomingExams.length === 0 ? (
+                                <p className="text-xs text-slate-500 py-3">No upcoming exams currently announced for this class.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {upcomingExams.map((exam) => (
+                                        <div key={exam.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex flex-col items-center justify-center shrink-0 shadow-2xs">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase">Exam</span>
+                                                <Calendar className="w-3.5 h-3.5 text-indigo-600 mt-0.5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-900 truncate">{exam.name}</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                                    Date: <span className="font-semibold text-slate-700">{formatWhen(exam.exam_date)}</span>
+                                                </p>
+                                                <p className="text-[11px] text-slate-500 font-mono">
+                                                    Time: {formatClock(exam.start_time)} – {formatClock(exam.end_time)}
+                                                </p>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <p className="text-center text-gray-500 py-8">No upcoming exams</p>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Published Results */}
-                        <div className="lg:col-span-2">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Published Results</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {results.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {results.map((result) => (
-                                                <Card key={result.id} className="border">
-                                                    <CardContent className="p-4">
-                                                        <div className="flex items-start justify-between mb-3">
-                                                            <div>
-                                                                <h4 className="font-semibold text-lg mb-1">
-                                                                    {result.exam.name}
-                                                                </h4>
-                                                                <p className="text-sm text-gray-600">
-                                                                    Published: {new Date(result.created_at).toLocaleDateString()}
-                                                                </p>
-                                                            </div>
-                                                            <Badge
-                                                                className={
-                                                                    result.pass_status === 'Pass'
-                                                                        ? 'bg-green-100 text-green-800'
-                                                                        : 'bg-red-100 text-red-800'
-                                                                }
-                                                            >
-                                                                {result.pass_status}
-                                                            </Badge>
-                                                        </div>
+                        {/* 2. Published Exam Results */}
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-3">
+                            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100">
+                                <Award className="w-4 h-4 text-indigo-600" />
+                                Published Term Marksheets ({results.length})
+                            </h2>
 
-                                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                                                            <div className="text-center p-3 bg-gray-50 rounded-lg">
-                                                                <p className="text-xs text-gray-600 mb-1">Total Marks</p>
-                                                                <p className="text-lg font-bold">{result.total_marks}</p>
-                                                            </div>
-                                                            <div className="text-center p-3 bg-blue-50 rounded-lg">
-                                                                <p className="text-xs text-gray-600 mb-1">Obtained</p>
-                                                                <p className="text-lg font-bold text-blue-600">
-                                                                    {result.obtained_marks}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-center p-3 bg-purple-50 rounded-lg">
-                                                                <p className="text-xs text-gray-600 mb-1">Percentage</p>
-                                                                <p className="text-lg font-bold text-purple-600">
-                                                                    {result.percentage.toFixed(2)}%
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-center p-3 bg-green-50 rounded-lg">
-                                                                <p className="text-xs text-gray-600 mb-1">Grade</p>
-                                                                <p className="text-lg font-bold text-green-600">
-                                                                    {result.grade}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-center p-3 bg-indigo-50 rounded-lg">
-                                                                <p className="text-xs text-gray-600 mb-1">GPA</p>
-                                                                <p className="text-lg font-bold text-indigo-600">
-                                                                    {result.gpa.toFixed(2)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                            {results.length === 0 ? (
+                                <p className="text-xs text-slate-500 py-4">No published exam results recorded for this student yet.</p>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {results.map((result) => (
+                                        <Link
+                                            key={result.id}
+                                            href={route('parent.exams.result', result.id)}
+                                            className="p-3.5 rounded-xl border border-slate-200/80 hover:border-indigo-300 hover:bg-slate-50/70 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs group"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center text-indigo-600 font-bold shrink-0 text-sm">
+                                                    {result.grade}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700 truncate">
+                                                        {result.exam.name}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                                        Percentage: <span className="font-mono font-semibold text-slate-800">{Number(result.percentage).toFixed(1)}%</span>
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                                        <Link href={route('parent.exams.result', result.id)}>
-                                                            <Button variant="outline" className="w-full">
-                                                                <BookOpen className="h-4 w-4 mr-2" />
-                                                                View Detailed Result
-                                                            </Button>
-                                                        </Link>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-center text-gray-500 py-8">No published results available</p>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                            <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                                                {getPassBadge(result.pass_status)}
+                                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
+                                                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                        </>
-                    )}
-                </div>
-            </div>
+                    </>
+                )}
+            </ParentPage>
         </AuthenticatedLayout>
     );
 }

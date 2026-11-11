@@ -5,12 +5,13 @@ import {
     Award,
     TrendingUp,
     Medal,
-    Download,
-    Eye
+    ChevronRight,
+    FileText,
+    CheckCircle2,
+    XCircle
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
-import Badge from '@/Components/Badge';
-import Button from '@/Components/Button';
+import FormPageHeader from '@/Components/FormPageHeader';
+import { formatWhen } from '@/utils/datetime';
 
 interface Student {
     id: number;
@@ -41,177 +42,163 @@ interface Props {
     results: Result[];
 }
 
-export default function Results({ student, results }: Props) {
-    const getResultColor = (status: string) => {
-        return status.toLowerCase() === 'pass' ? 'text-green-600' : 'text-red-600';
-    };
-
-    const getGradeColor = (grade: string) => {
-        const colors: Record<string, string> = {
-            'A+': 'bg-green-100 text-green-800',
-            'A': 'bg-green-100 text-green-700',
-            'A-': 'bg-blue-100 text-blue-800',
-            'B': 'bg-blue-100 text-blue-700',
-            'C': 'bg-yellow-100 text-yellow-800',
-            'D': 'bg-orange-100 text-orange-800',
-            'F': 'bg-red-100 text-red-800',
-        };
-        return colors[grade] || 'bg-gray-100 text-gray-800';
-    };
-
+export default function Results({ student, results = [] }: Props) {
     const averagePercentage = results.length > 0
-        ? (results.reduce((sum, r) => sum + r.percentage, 0) / results.length).toFixed(2)
-        : '0.00';
+        ? (results.reduce((sum, r) => sum + r.percentage, 0) / results.length).toFixed(1)
+        : '0.0';
 
     const averageGPA = results.length > 0
         ? (results.reduce((sum, r) => sum + r.gpa, 0) / results.length).toFixed(2)
         : '0.00';
 
+    const getGradeBadge = (grade: string) => {
+        const g = (grade || '').toUpperCase();
+        if (g.startsWith('A')) {
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        }
+        if (g.startsWith('B')) {
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        }
+        if (g.startsWith('C') || g.startsWith('D')) {
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        }
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+    };
+
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    My Results
-                </h2>
-            }
-        >
-            <Head title="My Results" />
+        <AuthenticatedLayout>
+            <Head title="Academic Results" />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Student Info */}
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-semibold text-lg">{student.full_name}</h3>
-                                    <p className="text-sm text-gray-600">
-                                        Class {student.class_name} - {student.section_name} | Roll: {student.roll_number}
-                                    </p>
-                                </div>
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="My Academic Results"
+                    subtitle={`${student.full_name} • Class ${student.class_name} (${student.section_name}) • Roll #${student.roll_number}`}
+                    backUrl="/student/exams"
+                    badges={[
+                        { label: `${results.length} Terms Published`, variant: 'neutral' },
+                        { label: `GPA ${averageGPA} Overall`, variant: Number(averageGPA) >= 3.5 ? 'success' : 'neutral' }
+                    ]}
+                />
+
+                {/* 2. THREE SUMMARY KPI CARDS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-slate-500">Average Score</span>
+                            <TrendingUp className="w-4 h-4 text-indigo-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-slate-900 tracking-tight">{averagePercentage}%</div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Across all published exams</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-emerald-600">Cumulative GPA</span>
+                            <Award className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-emerald-700 tracking-tight">{averageGPA}</div>
+                        <p className="text-[11px] text-emerald-600 mt-0.5">Scale: 5.00</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-slate-500">Exams Completed</span>
+                            <Medal className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-slate-900 tracking-tight">{results.length}</div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Published grade sheets</p>
+                    </div>
+                </div>
+
+                {/* 3. RESULTS DIRECTORY (DUAL VIEW) */}
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                    <div className="p-4 border-b border-slate-200/80">
+                        <h3 className="text-sm font-semibold text-slate-900">Published Marksheets & Grade Cards</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Select any examination to inspect detailed subject-wise marksheet</p>
+                    </div>
+
+                    {results && results.length > 0 ? (
+                        <>
+                            {/* Mobile Card Feed */}
+                            <div className="md:hidden divide-y divide-slate-100">
+                                {results.map((result) => (
+                                    <div key={result.id} className="p-3.5 space-y-2.5">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-900">{result.exam_name}</h4>
+                                                <p className="text-[11px] text-slate-500">{formatWhen(result.exam_date)}</p>
+                                            </div>
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${getGradeBadge(result.grade)}`}>
+                                                GPA {result.gpa} ({result.grade})
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-1 text-[11px] bg-slate-50 p-2 rounded-lg text-slate-600">
+                                            <div><span className="text-slate-400 block">Marks</span><strong>{result.obtained_marks}/{result.total_marks}</strong></div>
+                                            <div><span className="text-slate-400 block">Percentage</span><strong>{result.percentage}%</strong></div>
+                                            <div><span className="text-slate-400 block">Position</span><strong>#{result.class_position || 'N/A'}</strong></div>
+                                        </div>
+
+                                        <Link
+                                            href={`/student/results/${result.id}`}
+                                            className="w-full inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                                        >
+                                            View Marksheet <ChevronRight className="w-3.5 h-3.5" />
+                                        </Link>
+                                    </div>
+                                ))}
                             </div>
-                        </CardContent>
-                    </Card>
 
-                    {/* Performance Overview */}
-                    {results.length > 0 && (
-                        <div className="grid gap-4 md:grid-cols-3">
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-gray-600">Total Exams</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold">{results.length}</div>
-                                    <p className="text-xs text-gray-500">Results published</p>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-gray-600">Average Percentage</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold text-blue-600">{averagePercentage}%</div>
-                                    <p className="text-xs text-gray-500">Overall performance</p>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-gray-600">Average GPA</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold text-green-600">{averageGPA}</div>
-                                    <p className="text-xs text-gray-500">Out of 5.00</p>
-                                </CardContent>
-                            </Card>
+                            {/* Desktop High-Density Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 border-b border-slate-200/80">
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Exam Name</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Exam Date</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Obtained Marks</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Score %</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">GPA & Grade</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Position</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 text-xs">
+                                        {results.map((result) => (
+                                            <tr key={result.id} className="hover:bg-slate-50/60 transition-colors">
+                                                <td className="px-4 py-3 font-bold text-slate-900">{result.exam_name}</td>
+                                                <td className="px-4 py-3 text-slate-500">{formatWhen(result.exam_date)}</td>
+                                                <td className="px-4 py-3 text-slate-800 font-medium">
+                                                    {result.obtained_marks} / {result.total_marks}
+                                                </td>
+                                                <td className="px-4 py-3 font-semibold text-slate-700">{result.percentage}%</td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${getGradeBadge(result.grade)}`}>
+                                                        GPA {result.gpa} ({result.grade})
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-700 font-medium">#{result.class_position || 'N/A'}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Link
+                                                        href={`/student/results/${result.id}`}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                                                    >
+                                                        Marksheet <ChevronRight className="w-3.5 h-3.5" />
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Award className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-slate-600">No published results available yet</p>
                         </div>
                     )}
-
-                    {/* Results List */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <Award className="mr-2 h-5 w-5" />
-                                Published Results
-                            </CardTitle>
-                            <CardDescription>View your exam results and performance</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {results.length > 0 ? (
-                                <div className="space-y-4">
-                                    {results.map((result) => (
-                                        <div
-                                            key={result.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-center space-x-3 mb-2">
-                                                    <h4 className="font-semibold text-gray-900">{result.exam_name}</h4>
-                                                    <Badge className={getGradeColor(result.grade)}>
-                                                        {result.grade} - {result.gpa}
-                                                    </Badge>
-                                                    <Badge variant="outline" className={getResultColor(result.result_status)}>
-                                                        {result.result_status}
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                                    <div>
-                                                        <p className="text-gray-600">Marks Obtained</p>
-                                                        <p className="font-semibold">
-                                                            {result.obtained_marks} / {result.total_marks}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-600">Percentage</p>
-                                                        <p className="font-semibold">{result.percentage}%</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-600">Class Position</p>
-                                                        <p className="font-semibold flex items-center">
-                                                            <Medal className="mr-1 h-4 w-4 text-yellow-600" />
-                                                            {result.class_position}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-600">Exam Date</p>
-                                                        <p className="font-semibold">{result.exam_date}</p>
-                                                    </div>
-                                                </div>
-
-                                                {result.remarks && (
-                                                    <p className="mt-2 text-sm text-gray-600 italic">
-                                                        Remarks: {result.remarks}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div className="flex flex-col space-y-2 ml-4">
-                                                <Link href={`/student/results/${result.id}`}>
-                                                    <Button size="sm" variant="outline">
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        View Details
-                                                    </Button>
-                                                </Link>
-                                                <Link href={`/student/results/${result.id}/download`}>
-                                                    <Button size="sm">
-                                                        <Download className="mr-2 h-4 w-4" />
-                                                        Download
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <Award className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">No results published yet</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </AuthenticatedLayout>

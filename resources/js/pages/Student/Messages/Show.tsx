@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, Link } from '@inertiajs/react';
 import {
     ArrowLeft,
     User,
@@ -8,9 +8,10 @@ import {
     Reply,
     Send,
     Paperclip,
-    Download
+    Download,
+    CheckCheck
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/Components/Card';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Message {
     id: number;
@@ -55,173 +56,119 @@ export default function Show({ message, can_reply }: Props) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <button
-                            onClick={() => router.get('/student/messages')}
-                            className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                            <ArrowLeft className="h-5 w-5" />
-                        </button>
-                        <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            Message Details
-                        </h2>
-                    </div>
-                    {can_reply && (
-                        <button
-                            onClick={() => setShowReply(!showReply)}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all"
-                        >
-                            <Reply className="mr-2 h-4 w-4" />
-                            Reply
-                        </button>
-                    )}
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title={message.subject} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-4xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Message Card */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <CardTitle className="text-2xl mb-4">{message.subject}</CardTitle>
-                                    <div className="flex items-center space-x-6 text-sm text-gray-600">
-                                        <div className="flex items-center space-x-2">
-                                            <User className="h-4 w-4" />
-                                            <div>
-                                                <span className="font-medium text-gray-900">{message.sender_name}</span>
-                                                <span className="ml-2 text-gray-500">({message.sender_role})</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Calendar className="h-4 w-4" />
-                                            <span>{message.sent_at}</span>
-                                        </div>
-                                    </div>
-                                    {message.read_at && (
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            Read: {message.read_at}
-                                        </p>
-                                    )}
-                                </div>
+            <div className="space-y-4 pb-8 max-w-4xl mx-auto">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Conversation Details"
+                    subtitle={`Subject: ${message.subject}`}
+                    backUrl="/student/messages"
+                    badges={[
+                        { label: message.sender_role, variant: 'neutral' },
+                        { label: message.read_at ? 'Read' : 'Delivered', variant: 'neutral' }
+                    ]}
+                    actionSlot={
+                        can_reply ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowReply(!showReply)}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-2xs"
+                            >
+                                <Reply className="w-3.5 h-3.5" />
+                                Reply to {message.sender_name}
+                            </button>
+                        ) : undefined
+                    }
+                />
+
+                {/* 2. MESSAGE BODY CARD */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-5 sm:p-7 shadow-2xs space-y-5">
+                    {/* Header meta */}
+                    <div className="border-b border-slate-100 pb-4 flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold flex items-center justify-center text-sm shrink-0">
+                                {(message.sender_name || 'U').charAt(0).toUpperCase()}
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="prose max-w-none">
-                                <p className="text-gray-700 whitespace-pre-wrap">{message.message}</p>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">{message.sender_name}</h3>
+                                <p className="text-xs text-slate-500">
+                                    To: <strong className="text-slate-700 font-medium">{message.recipient_name}</strong> • {message.sender_role}
+                                </p>
                             </div>
+                        </div>
 
-                            {/* Attachments */}
-                            {message.attachments && message.attachments.length > 0 && (
-                                <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                                        <Paperclip className="mr-2 h-4 w-4" />
-                                        Attachments ({message.attachments.length})
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {message.attachments.map((attachment) => (
-                                            <a
-                                                key={attachment.id}
-                                                href={`/storage/${attachment.file_path}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                                            >
-                                                <div className="flex items-center space-x-3">
-                                                    <Paperclip className="h-5 w-5 text-gray-400" />
-                                                    <div>
-                                                        <p className="font-medium text-sm text-gray-900">{attachment.file_name}</p>
-                                                        <p className="text-xs text-gray-500">{attachment.file_size}</p>
-                                                    </div>
-                                                </div>
-                                                <Download className="h-4 w-4 text-gray-400" />
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Reply Form */}
-                    {showReply && can_reply && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <Reply className="mr-2 h-5 w-5" />
-                                    Reply to Message
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <form onSubmit={handleReply} className="space-y-4">
-                                    <div>
-                                        <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Subject
-                                        </label>
-                                        <input
-                                            id="subject"
-                                            type="text"
-                                            value={data.subject}
-                                            onChange={(e) => setData('subject', e.target.value)}
-                                            required
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Message
-                                        </label>
-                                        <textarea
-                                            id="message"
-                                            rows={6}
-                                            value={data.message}
-                                            onChange={(e) => setData('message', e.target.value)}
-                                            required
-                                            placeholder="Type your reply here..."
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Send className="mr-2 h-4 w-4" />
-                                            {processing ? 'Sending...' : 'Send Reply'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowReply(false)}
-                                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-between">
-                        <button
-                            onClick={() => router.get('/student/messages')}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Messages
-                        </button>
+                        <span className="text-xs text-slate-400 shrink-0 font-medium">
+                            {message.sent_at}
+                        </span>
                     </div>
+
+                    {/* Message text */}
+                    <div className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line py-2">
+                        {message.message}
+                    </div>
+
+                    {/* Attachments */}
+                    {message.attachments && message.attachments.length > 0 && (
+                        <div className="pt-4 border-t border-slate-100">
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Attachments</h4>
+                            <div className="space-y-2">
+                                {message.attachments.map((att) => (
+                                    <a
+                                        key={att.id}
+                                        href={att.file_path}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        download
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs text-indigo-700 font-medium"
+                                    >
+                                        <Download className="w-3.5 h-3.5 text-indigo-600" />
+                                        {att.file_name} ({att.file_size})
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                {/* 3. INLINE REPLY COMPOSER */}
+                {showReply && (
+                    <div className="bg-white rounded-xl border border-indigo-200 p-5 shadow-sm space-y-3">
+                        <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                            <Reply className="w-3.5 h-3.5 text-indigo-600" />
+                            Compose Reply
+                        </h4>
+                        <form onSubmit={handleReply} className="space-y-3">
+                            <textarea
+                                rows={4}
+                                required
+                                value={data.message}
+                                onChange={(e) => setData('message', e.target.value)}
+                                placeholder="Type your reply here..."
+                                className="w-full text-xs py-2 px-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                            />
+
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReply(false)}
+                                    className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-2xs"
+                                >
+                                    <Send className="w-3.5 h-3.5" />
+                                    {processing ? 'Sending...' : 'Send Reply'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

@@ -6,12 +6,14 @@ import {
     Calendar,
     Clock,
     Award,
-    CheckCircle,
-    AlertCircle
+    CheckCircle2,
+    AlertCircle,
+    ChevronRight,
+    MapPin,
+    CalendarDays
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
-import Badge from '@/Components/Badge';
-import Button from '@/Components/Button';
+import FormPageHeader from '@/Components/FormPageHeader';
+import { dateBadge, formatTimeRange, formatWhen } from '@/utils/datetime';
 
 interface Student {
     id: number;
@@ -49,152 +51,146 @@ interface Props {
     upcomingSchedules: Schedule[];
 }
 
-export default function Index({ student, exams, upcomingSchedules }: Props) {
+export default function Index({ student, exams = [], upcomingSchedules = [] }: Props) {
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Exams & Schedules
-                </h2>
-            }
-        >
-            <Head title="Exams" />
+        <AuthenticatedLayout>
+            <Head title="Exams & Schedules" />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Student Info */}
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-semibold text-lg">{student.full_name}</h3>
-                                    <p className="text-sm text-gray-600">
-                                        Class {student.class_name} - {student.section_name} | Roll: {student.roll_number}
-                                    </p>
-                                </div>
-                                <Link href="/student/results">
-                                    <Button>
-                                        <Award className="mr-2 h-4 w-4" />
-                                        View Results
-                                    </Button>
-                                </Link>
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="Exams & Schedules"
+                    subtitle={`${student.full_name} • Class ${student.class_name} (${student.section_name}) • Roll #${student.roll_number}`}
+                    backUrl="/student/dashboard"
+                    badges={[
+                        { label: `${exams.length} Exams Recorded`, variant: 'neutral' }
+                    ]}
+                    actionSlot={
+                        <Link
+                            href="/student/results"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-2xs"
+                        >
+                            <Award className="w-3.5 h-3.5" />
+                            My Published Results
+                        </Link>
+                    }
+                />
+
+                {/* 2. UPCOMING EXAM SCHEDULE CARDS */}
+                {upcomingSchedules && upcomingSchedules.length > 0 && (
+                    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                        <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-amber-500" />
+                                <h3 className="text-sm font-semibold text-slate-900">Upcoming Exam Routine</h3>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Upcoming Exam Schedules */}
-                    {upcomingSchedules.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <AlertCircle className="mr-2 h-5 w-5 text-orange-600" />
-                                    Upcoming Exam Schedule
-                                </CardTitle>
-                                <CardDescription>Your upcoming exam timetable</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-3">
-                                    {upcomingSchedules.map((schedule) => (
-                                        <div
-                                            key={schedule.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                                        >
-                                            <div className="flex items-start space-x-4">
-                                                <div className="flex-shrink-0">
-                                                    <div className="flex flex-col items-center justify-center w-16 h-16 bg-blue-100 rounded-lg">
-                                                        <span className="text-xs text-blue-600 font-medium">
-                                                            {new Date(schedule.exam_date).toLocaleDateString('en-US', { month: 'short' })}
-                                                        </span>
-                                                        <span className="text-2xl font-bold text-blue-600">
-                                                            {new Date(schedule.exam_date).getDate()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-gray-900">{schedule.subject_name}</h4>
-                                                    <p className="text-sm text-gray-600">{schedule.exam_name}</p>
-                                                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                                                        <span className="flex items-center">
-                                                            <Clock className="mr-1 h-4 w-4" />
-                                                            {schedule.start_time} - {schedule.end_time}
-                                                        </span>
-                                                        <span>Duration: {schedule.duration} min</span>
-                                                        {schedule.room_number && (
-                                                            <span>Room: {schedule.room_number}</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                {upcomingSchedules.length} Upcoming Papers
+                            </span>
+                        </div>
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {upcomingSchedules.map((schedule) => {
+                                const badge = dateBadge(schedule.exam_date);
+                                return (
+                                <div
+                                    key={schedule.id}
+                                    className="p-3.5 rounded-lg border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-start gap-3.5"
+                                >
+                                    <div className="w-14 h-14 rounded-xl bg-indigo-50 border border-indigo-100 flex flex-col items-center justify-center shrink-0">
+                                        <span className="text-[10px] uppercase font-bold text-indigo-500">
+                                            {badge.month}
+                                        </span>
+                                        <span className="text-lg font-bold text-indigo-700 leading-none">
+                                            {badge.day}
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-xs font-bold text-slate-900 truncate">{schedule.subject_name}</h4>
+                                        <p className="text-[11px] text-slate-500">{schedule.exam_name}</p>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 mt-1.5">
+                                            <span className="flex items-center gap-1 font-mono">
+                                                <Clock className="w-3 h-3 text-slate-400" />
+                                                {formatTimeRange(schedule.start_time, schedule.end_time)}
+                                            </span>
+                                            <span>• {schedule.duration} Mins</span>
+                                            {schedule.room_number && (
+                                                <span className="flex items-center gap-1 text-slate-500">
+                                                    <MapPin className="w-3 h-3 text-slate-400" />
+                                                    Room {schedule.room_number}
+                                                </span>
+                                            )}
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. ALL EXAMS DIRECTORY */}
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                    <div className="p-4 border-b border-slate-200/80">
+                        <h3 className="text-sm font-semibold text-slate-900">Academic Examination Directory</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">List of registered term tests and final examinations</p>
+                    </div>
+
+                    {exams && exams.length > 0 ? (
+                        <div className="divide-y divide-slate-100">
+                            {exams.map((exam) => (
+                                <div
+                                    key={exam.id}
+                                    className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs font-bold text-slate-900 truncate">{exam.name}</h4>
+                                            {exam.has_result && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    Result Published
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                                {exam.academic_year}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                Date: <strong className="text-slate-700 font-medium">{formatWhen(exam.exam_date)}</strong>
+                                            </span>
+                                            <span>Total Marks: <strong className="text-slate-700 font-medium">{exam.total_marks}</strong></span>
+                                            <span>Passing Marks: <strong className="text-slate-700 font-medium">{exam.passing_marks}</strong></span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                                        <Link
+                                            href={`/student/exams/${exam.id}`}
+                                            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                                        >
+                                            View Timetable
+                                        </Link>
+                                        {exam.has_result && exam.result_id && (
+                                            <Link
+                                                href={`/student/results/${exam.result_id}`}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                                            >
+                                                <Award className="w-3.5 h-3.5" />
+                                                View Marksheet
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-slate-600">No exams registered for this session</p>
+                        </div>
                     )}
-
-                    {/* All Exams */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <FileText className="mr-2 h-5 w-5" />
-                                All Exams
-                            </CardTitle>
-                            <CardDescription>Complete list of your exams</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {exams.length > 0 ? (
-                                <div className="space-y-4">
-                                    {exams.map((exam) => (
-                                        <div
-                                            key={exam.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-center space-x-3">
-                                                    <h4 className="font-semibold text-gray-900">{exam.name}</h4>
-                                                    {exam.has_result && (
-                                                        <Badge variant="default" className="bg-green-100 text-green-800">
-                                                            <CheckCircle className="mr-1 h-3 w-3" />
-                                                            Result Published
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                                                    <span className="flex items-center">
-                                                        <Calendar className="mr-1 h-4 w-4" />
-                                                        {exam.exam_date}
-                                                    </span>
-                                                    <span>Total Marks: {exam.total_marks}</span>
-                                                    <span>Passing: {exam.passing_marks}</span>
-                                                    <Badge variant="outline">{exam.academic_year}</Badge>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Link href={`/student/exams/${exam.id}`}>
-                                                    <Button variant="outline" size="sm">
-                                                        View Details
-                                                    </Button>
-                                                </Link>
-                                                {exam.has_result && exam.result_id && (
-                                                    <Link href={`/student/results/${exam.result_id}`}>
-                                                        <Button size="sm">
-                                                            <Award className="mr-2 h-4 w-4" />
-                                                            View Result
-                                                        </Button>
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">No exams found</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </AuthenticatedLayout>

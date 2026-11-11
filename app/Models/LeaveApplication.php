@@ -29,9 +29,9 @@ class LeaveApplication extends Model
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'end_date' => 'date',
-            'total_days' => 'decimal:1',
+            'start_date' => 'date:Y-m-d',
+            'end_date' => 'date:Y-m-d',
+            'total_days' => 'float',
             'is_half_day' => 'boolean',
             'action_at' => 'datetime',
         ];
@@ -43,7 +43,7 @@ class LeaveApplication extends Model
 
     public function getAttachmentUrlAttribute(): ?string
     {
-        return $this->attachment_path ? asset('storage/' . $this->attachment_path) : null;
+        return $this->attachment_path ? asset('storage/'.$this->attachment_path) : null;
     }
 
     public function teacher()
@@ -86,4 +86,3 @@ class LeaveApplication extends Model
         return $query->where('status', 'rejected');
     }
 }
-

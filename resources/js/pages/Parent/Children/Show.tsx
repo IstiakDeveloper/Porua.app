@@ -1,317 +1,343 @@
+import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ParentPage from '@/Components/Parent/ParentPage';
+import { formatTaka, formatWhen } from '@/Components/Parent/format';
+import { route } from '@/Components/Parent/route';
 import {
+    ArrowLeft,
+    BookOpen,
+    CalendarDays,
+    Award,
+    Receipt,
     User,
-    Calendar,
     Phone,
-    Mail,
     MapPin,
-    Heart,
-    Users,
-    TrendingUp,
-    CheckCircle,
-    BookOpen
+    HeartPulse,
+    Droplet,
+    Calendar,
+    ChevronRight,
+    AlertCircle,
+    CheckCircle2
 } from 'lucide-react';
 
-interface Student {
+interface ResultRow {
     id: number;
-    full_name: string;
-    admission_number: string;
-    roll_number: string;
-    photo: string | null;
-    date_of_birth: string;
-    gender: string;
-    phone: string;
-    email: string;
-    address: string;
-    class_name: string;
-    section_name: string;
-    blood_group: string;
-    medical_conditions: string;
-}
-
-interface Result {
     exam_name: string;
-    total_marks: number;
-    obtained_marks: number;
     percentage: number;
     grade: string;
     gpa: number;
 }
 
-interface Props {
-    student: Student;
-    attendanceStats: {
-        present: number;
-        absent: number;
-        late: number;
-        total_days: number;
-    };
-    recentResults: Result[];
-    feeStats: {
-        total_paid: number;
-        total_due: number;
-        overdue_count: number;
-    };
+interface BookRow {
+    id: number;
+    title: string;
+    due_date: string | null;
+    is_overdue: boolean;
+    fine_amount: number;
 }
 
-export default function Show({ student, attendanceStats, recentResults, feeStats }: Props) {
-    const attendancePercentage = attendanceStats.total_days > 0
-        ? ((attendanceStats.present / attendanceStats.total_days) * 100).toFixed(1)
+interface TodayClass {
+    name: string;
+    teacher_name?: string | null;
+    room_no?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
+}
+
+interface Props {
+    student: {
+        id: number;
+        full_name: string;
+        photo: string | null;
+        admission_number?: string;
+        roll_number: string | null;
+        date_of_birth: string | null;
+        gender: string | null;
+        phone: string | null;
+        email: string | null;
+        address: string | null;
+        class_name: string;
+        section_name: string;
+        blood_group: string | null;
+        medical_conditions: string | null;
+    };
+    attendanceStats: { present: number; absent: number; late: number; total_days: number };
+    recentResults: ResultRow[];
+    feeStats: { total_paid: number; total_due: number; overdue_count: number };
+    todayClass: TodayClass | null;
+    issuedBooks: BookRow[];
+}
+
+function percent(present: number, total: number): string {
+    if (!total) return '—';
+    return `${Math.round((present / total) * 100)}%`;
+}
+
+export default function Show({ student, attendanceStats, recentResults, feeStats, todayClass, issuedBooks }: Props) {
+    const attendancePct = attendanceStats.total_days > 0
+        ? Math.round((attendanceStats.present / attendanceStats.total_days) * 100)
         : 0;
 
     return (
         <AuthenticatedLayout>
-            <Head title={student.full_name} />
+            <Head title={`${student.full_name} - Student Profile`} />
 
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Profile Header */}
-                    <div className="bg-white rounded-lg shadow-md mb-6">
-                        <div className="p-6">
-                            <div className="flex items-start gap-6">
+            <ParentPage
+                title={student.full_name}
+                subtitle={`Class ${student.class_name} • Sec ${student.section_name}${student.roll_number ? ` • Roll: ${student.roll_number}` : ''}`}
+                action={
+                    <Link
+                        href={route('parent.dashboard')}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        Back to Dashboard
+                    </Link>
+                }
+            >
+                {/* 1. Student Identity Hero Card */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                            {student.photo ? (
                                 <img
-                                    src={student.photo || '/default-avatar.png'}
+                                    src={student.photo}
                                     alt={student.full_name}
-                                    className="h-32 w-32 rounded-lg object-cover"
+                                    className="w-14 h-14 rounded-full object-cover border-2 border-slate-100 shadow-2xs shrink-0"
                                 />
-                                <div className="flex-1">
-                                    <h1 className="text-3xl font-bold mb-2">{student.full_name}</h1>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                        <div>
-                                            <span className="text-gray-600">Admission No:</span>
-                                            <p className="font-medium">{student.admission_number}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Roll Number:</span>
-                                            <p className="font-medium">{student.roll_number}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Class:</span>
-                                            <p className="font-medium">{student.class_name} - {student.section_name}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Gender:</span>
-                                            <p className="font-medium">{student.gender}</p>
-                                        </div>
-                                    </div>
+                            ) : (
+                                <div className="w-14 h-14 rounded-full bg-indigo-50 border border-indigo-100/60 flex items-center justify-center font-bold text-indigo-700 text-lg shrink-0">
+                                    {student.full_name.charAt(0)}
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div className="bg-white rounded-lg shadow-md">
-                            <div className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Attendance</p>
-                                        <p className="text-2xl font-bold">{attendancePercentage}%</p>
-                                        <p className="text-xs text-gray-500">
-                                            {attendanceStats.present}/{attendanceStats.total_days} days present
-                                        </p>
-                                    </div>
-                                    <CheckCircle className="h-8 w-8 text-green-600" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg shadow-md">
-                            <div className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Recent Exams</p>
-                                        <p className="text-2xl font-bold">{recentResults.length}</p>
-                                        <p className="text-xs text-gray-500">Published results</p>
-                                    </div>
-                                    <TrendingUp className="h-8 w-8 text-blue-600" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg shadow-md">
-                            <div className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Average Performance</p>
-                                        <p className="text-2xl font-bold">
-                                            {recentResults.length > 0
-                                                ? (recentResults.reduce((sum, r) => sum + r.percentage, 0) / recentResults.length).toFixed(1)
-                                                : 0}%
-                                        </p>
-                                        <p className="text-xs text-gray-500">Last {recentResults.length} exams</p>
-                                    </div>
-                                    <BookOpen className="h-8 w-8 text-purple-600" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Personal Information */}
-                        <div className="bg-white rounded-lg shadow-md">
-                            <div className="p-6 border-b border-gray-200">
-                                <h2 className="text-xl font-bold text-gray-900">Personal Information</h2>
-                            </div>
-                            <div className="p-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <Calendar className="h-5 w-5 text-gray-400" />
-                                        <div>
-                                            <p className="text-sm text-gray-600">Date of Birth</p>
-                                            <p className="font-medium">
-                                                {new Date(student.date_of_birth).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Heart className="h-5 w-5 text-gray-400" />
-                                        <div>
-                                            <p className="text-sm text-gray-600">Blood Group</p>
-                                            <p className="font-medium">{student.blood_group || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Phone className="h-5 w-5 text-gray-400" />
-                                        <div>
-                                            <p className="text-sm text-gray-600">Phone</p>
-                                            <p className="font-medium">{student.phone || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Mail className="h-5 w-5 text-gray-400" />
-                                        <div>
-                                            <p className="text-sm text-gray-600">Email</p>
-                                            <p className="font-medium">{student.email || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <MapPin className="h-5 w-5 text-gray-400 mt-1" />
-                                        <div>
-                                            <p className="text-sm text-gray-600">Address</p>
-                                            <p className="font-medium">{student.address || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    {student.medical_conditions && (
-                                        <div className="flex items-start gap-3">
-                                            <Heart className="h-5 w-5 text-red-400 mt-1" />
-                                            <div>
-                                                <p className="text-sm text-gray-600">Medical Conditions</p>
-                                                <p className="font-medium text-red-600">{student.medical_conditions}</p>
-                                            </div>
-                                        </div>
+                            )}
+                            <div>
+                                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                                    {student.full_name}
+                                </h2>
+                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
+                                    <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                                        Class {student.class_name} ({student.section_name})
+                                    </span>
+                                    {student.roll_number && (
+                                        <span className="font-mono text-slate-600">
+                                            Roll: {student.roll_number}
+                                        </span>
+                                    )}
+                                    {student.admission_number && (
+                                        <span className="font-mono text-slate-600">
+                                            Adm: {student.admission_number}
+                                        </span>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Attendance Summary */}
-                        <div className="bg-white rounded-lg shadow-md">
-                            <div className="p-6 border-b border-gray-200">
-                                <h2 className="text-xl font-bold text-gray-900">Attendance Summary (This Year)</h2>
-                            </div>
-                            <div className="p-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                                        <div className="flex items-center gap-2">
-                                            <CheckCircle className="h-5 w-5 text-green-600" />
-                                            <span className="font-medium">Present</span>
-                                        </div>
-                                        <span className="text-lg font-bold text-green-600">
-                                            {attendanceStats.present}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                                        <div className="flex items-center gap-2">
-                                            <span className="h-5 w-5 text-red-600">✕</span>
-                                            <span className="font-medium">Absent</span>
-                                        </div>
-                                        <span className="text-lg font-bold text-red-600">
-                                            {attendanceStats.absent}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                                        <div className="flex items-center gap-2">
-                                            <span className="h-5 w-5 text-orange-600">⏰</span>
-                                            <span className="font-medium">Late</span>
-                                        </div>
-                                        <span className="text-lg font-bold text-orange-600">
-                                            {attendanceStats.late}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-5 w-5 text-blue-600" />
-                                            <span className="font-medium">Total Days</span>
-                                        </div>
-                                        <span className="text-lg font-bold text-blue-600">
-                                            {attendanceStats.total_days}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Recent Exam Results */}
-                        <div className="lg:col-span-2 bg-white rounded-lg shadow-md">
-                            <div className="p-6 border-b border-gray-200">
-                                <h2 className="text-xl font-bold text-gray-900">Recent Exam Results</h2>
-                            </div>
-                            <div className="p-6">
-                                {recentResults.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b">
-                                                    <th className="text-left py-3 px-4">Exam Name</th>
-                                                    <th className="text-center py-3 px-4">Total Marks</th>
-                                                    <th className="text-center py-3 px-4">Obtained</th>
-                                                    <th className="text-center py-3 px-4">Percentage</th>
-                                                    <th className="text-center py-3 px-4">Grade</th>
-                                                    <th className="text-center py-3 px-4">GPA</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {recentResults.map((result, index) => (
-                                                    <tr key={index} className="border-b hover:bg-gray-50">
-                                                        <td className="py-3 px-4">{result.exam_name}</td>
-                                                        <td className="text-center py-3 px-4">{result.total_marks}</td>
-                                                        <td className="text-center py-3 px-4">{result.obtained_marks}</td>
-                                                        <td className="text-center py-3 px-4">
-                                                            <span
-                                                                className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                                                                    result.percentage >= 80
-                                                                        ? 'bg-green-100 text-green-800'
-                                                                        : result.percentage >= 60
-                                                                        ? 'bg-blue-100 text-blue-800'
-                                                                        : result.percentage >= 40
-                                                                        ? 'bg-orange-100 text-orange-800'
-                                                                        : 'bg-red-100 text-red-800'
-                                                                }`}
-                                                            >
-                                                                {result.percentage.toFixed(2)}%
-                                                            </span>
-                                                        </td>
-                                                        <td className="text-center py-3 px-4">
-                                                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                                                                {result.grade}
-                                                            </span>
-                                                        </td>
-                                                        <td className="text-center py-3 px-4">{result.gpa.toFixed(2)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <p className="text-center text-gray-500 py-8">No exam results available</p>
-                                )}
-                            </div>
+                        {/* Fast Navigation Tabs */}
+                        <div className="flex items-center gap-2 flex-wrap shrink-0">
+                            <Link
+                                href={route('parent.attendance.index', { student_id: student.id })}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                            >
+                                <CalendarDays className="w-3.5 h-3.5 text-slate-500" />
+                                Attendance
+                            </Link>
+                            <Link
+                                href={route('parent.exams.index', { student_id: student.id })}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                            >
+                                <Award className="w-3.5 h-3.5 text-slate-500" />
+                                Exam Results
+                            </Link>
+                            <Link
+                                href={route('parent.fees.index', { student_id: student.id })}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                            >
+                                <Receipt className="w-3.5 h-3.5 text-slate-500" />
+                                Fees Log
+                            </Link>
                         </div>
                     </div>
+
+                    {/* Personal & Demographic Pills */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-slate-100 text-xs">
+                        <div className="p-2.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Date of Birth</p>
+                            <p className="font-medium text-slate-800 mt-0.5">{formatWhen(student.date_of_birth)}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Gender</p>
+                            <p className="font-medium text-slate-800 mt-0.5 capitalize">{student.gender || '—'}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Blood Group</p>
+                            <p className="font-semibold text-rose-700 mt-0.5">{student.blood_group || '—'}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Contact Phone</p>
+                            <p className="font-mono text-slate-800 mt-0.5">{student.phone || '—'}</p>
+                        </div>
+                    </div>
+
+                    {(student.address || student.medical_conditions) && (
+                        <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 text-xs space-y-1">
+                            {student.address && (
+                                <p className="text-slate-600 flex items-start gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                    <span><strong className="text-slate-700">Residential Address:</strong> {student.address}</span>
+                                </p>
+                            )}
+                            {student.medical_conditions && (
+                                <p className="text-amber-800 flex items-start gap-1.5">
+                                    <HeartPulse className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                    <span><strong className="text-amber-900">Medical Notes:</strong> {student.medical_conditions}</span>
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
-            </div>
+
+                {/* 2. Key Academic Indicators (4 Metrics) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Annual Attendance</p>
+                        <p className="text-xl font-bold text-slate-900 mt-0.5">{percent(attendanceStats.present, attendanceStats.total_days)}</p>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${attendancePct}%` }} />
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">{attendanceStats.present} of {attendanceStats.total_days} days recorded</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Absences</p>
+                        <p className="text-xl font-bold text-rose-700 mt-0.5">{attendanceStats.absent}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{attendanceStats.late} late arrivals</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Outstanding Dues</p>
+                        <p className={`text-xl font-bold mt-0.5 ${feeStats.total_due > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                            {formatTaka(feeStats.total_due)}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                            {feeStats.overdue_count > 0 ? `${feeStats.overdue_count} overdue invoice(s)` : 'No overdue bills'}
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Fees Paid</p>
+                        <p className="text-xl font-bold text-emerald-700 mt-0.5">{formatTaka(feeStats.total_paid)}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Cleared to school</p>
+                    </div>
+                </div>
+
+                {/* 3. Today's Class & Issued Books */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Today's Period */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-2">
+                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <BookOpen className="w-4 h-4 text-indigo-600" />
+                            Today's Class Schedule
+                        </h3>
+                        {todayClass ? (
+                            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                                <p className="font-bold text-slate-900">{todayClass.name}</p>
+                                <p className="text-slate-600 mt-0.5 font-mono">
+                                    Time: {todayClass.start_time || '—'} – {todayClass.end_time || '—'}
+                                    {todayClass.room_no ? ` • Room ${todayClass.room_no}` : ''}
+                                </p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                    Teacher: {todayClass.teacher_name || 'Designated faculty'}
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-500 py-3">No active batch classes scheduled for today.</p>
+                        )}
+                    </div>
+
+                    {/* Library Issued Books */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-2">
+                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <BookOpen className="w-4 h-4 text-indigo-600" />
+                            Library Books Issued
+                        </h3>
+                        {issuedBooks && issuedBooks.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {issuedBooks.map((book) => (
+                                    <div key={book.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-slate-900 truncate">{book.title}</p>
+                                            <p className="text-[11px] text-slate-500">Due: {book.due_date || '—'}</p>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            {book.is_overdue ? (
+                                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                    Overdue
+                                                </span>
+                                            ) : (
+                                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    Issued
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-500 py-3">No borrowed library books currently pending return.</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* 4. Recent Exam Results */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <Award className="w-4 h-4 text-indigo-600" />
+                            Published Academic Results
+                        </h3>
+                        <Link
+                            href={route('parent.exams.index', { student_id: student.id })}
+                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                        >
+                            View All Results →
+                        </Link>
+                    </div>
+
+                    {recentResults && recentResults.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {recentResults.map((result) => (
+                                <Link
+                                    key={result.id}
+                                    href={route('parent.exams.result', result.id)}
+                                    className="p-3 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-3 group"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700 truncate">
+                                            {result.exam_name}
+                                        </p>
+                                        <p className="text-[11px] text-slate-500 mt-0.5">
+                                            GPA: <span className="font-mono font-semibold text-slate-800">{Number(result.gpa).toFixed(2)}</span> • Grade: <span className="font-semibold text-indigo-600">{result.grade}</span>
+                                        </p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <span className="font-mono font-bold text-xs text-slate-900 block">
+                                            {Number(result.percentage).toFixed(0)}%
+                                        </span>
+                                        <span className="text-[10px] text-indigo-600 font-semibold group-hover:underline">
+                                            Marksheet →
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 text-xs text-slate-500">
+                            No published term or semester exam results recorded yet.
+                        </div>
+                    )}
+                </div>
+            </ParentPage>
         </AuthenticatedLayout>
     );
 }

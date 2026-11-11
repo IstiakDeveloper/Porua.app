@@ -169,6 +169,11 @@ class Student extends Model
         return $this->hasMany(StudentPromotion::class);
     }
 
+    public function sessions()
+    {
+        return $this->hasMany(StudentSession::class);
+    }
+
     public function attendance()
     {
         return $this->hasMany(StudentAttendance::class);

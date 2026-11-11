@@ -2,18 +2,17 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import {
-    FileText,
     Calendar,
     Clock,
     MapPin,
     ArrowLeft,
     Award,
-    User,
-    BookOpen
+    BookOpen,
+    CheckCircle2,
+    CalendarDays
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
-import Badge from '@/Components/Badge';
-import Button from '@/Components/Button';
+import FormPageHeader from '@/Components/FormPageHeader';
+import { formatTimeRange, formatWhen } from '@/utils/datetime';
 
 interface Student {
     id: number;
@@ -54,191 +53,116 @@ interface Props {
     seatPlan: SeatPlan | null;
 }
 
-export default function Show({ student, exam, schedules, seatPlan }: Props) {
+export default function Show({ student, exam, schedules = [], seatPlan }: Props) {
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center space-x-4">
-                    <Link href="/student/exams">
-                        <Button variant="ghost" size="sm">
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                    </Link>
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Exam Details
-                    </h2>
-                </div>
-            }
-        >
-            <Head title={`${exam.name} - Details`} />
+        <AuthenticatedLayout>
+            <Head title={`${exam.name} - Timetable`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Student Info */}
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-semibold text-lg">{student.full_name}</h3>
-                                    <p className="text-sm text-gray-600">
-                                        Roll Number: {student.roll_number}
-                                    </p>
-                                </div>
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title={exam.name}
+                    subtitle={`Exam Timetable & Instructions • ${student.full_name} (Roll #${student.roll_number})`}
+                    backUrl="/student/exams"
+                    badges={[
+                        { label: exam.academic_year, variant: 'neutral' },
+                        { label: `Passing: ${exam.passing_marks}/${exam.total_marks}`, variant: 'neutral' }
+                    ]}
+                />
+
+                {/* 2. SEAT PLAN CARD IF AVAILABLE */}
+                {seatPlan && (
+                    <div className="bg-white rounded-xl border border-indigo-200/80 bg-indigo-50/30 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                                <MapPin className="w-5 h-5" />
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Exam Information */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <FileText className="mr-2 h-5 w-5" />
-                                {exam.name}
-                            </CardTitle>
-                            <CardDescription>Examination details and schedule</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="flex items-center space-x-3">
-                                    <Calendar className="h-5 w-5 text-gray-400" />
-                                    <div>
-                                        <p className="text-sm text-gray-600">Exam Date</p>
-                                        <p className="font-semibold">{exam.exam_date}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                    <Award className="h-5 w-5 text-gray-400" />
-                                    <div>
-                                        <p className="text-sm text-gray-600">Academic Year</p>
-                                        <p className="font-semibold">{exam.academic_year}</p>
-                                    </div>
-                                </div>
+                            <div>
+                                <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">Exam Hall & Seat Allocation</h3>
+                                <p className="text-sm font-bold text-indigo-900 mt-0.5">
+                                    Hall: {seatPlan.hall_name} • Seat No: <span className="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">{seatPlan.seat_number}</span>
+                                </p>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <span className="text-xs text-indigo-700 font-medium bg-white px-2.5 py-1 rounded-lg border border-indigo-200 self-start sm:self-center">
+                            Row #{seatPlan.row_number}
+                        </span>
+                    </div>
+                )}
 
-                    {/* Seat Plan Information */}
-                    {seatPlan && (
-                        <Card className="border-blue-200 bg-blue-50">
-                            <CardHeader>
-                                <CardTitle className="flex items-center text-blue-900">
-                                    <MapPin className="mr-2 h-5 w-5" />
-                                    Your Seat Assignment
-                                </CardTitle>
-                                <CardDescription>Examination hall and seat details</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="p-4 bg-white rounded-lg border border-blue-200">
-                                        <p className="text-sm text-gray-600 mb-1">Exam Hall</p>
-                                        <p className="text-lg font-bold text-blue-900">{seatPlan.hall_name}</p>
-                                    </div>
-                                    <div className="p-4 bg-white rounded-lg border border-blue-200">
-                                        <p className="text-sm text-gray-600 mb-1">Seat Number</p>
-                                        <p className="text-lg font-bold text-blue-900">{seatPlan.seat_number}</p>
-                                    </div>
-                                    <div className="p-4 bg-white rounded-lg border border-blue-200">
-                                        <p className="text-sm text-gray-600 mb-1">Row Number</p>
-                                        <p className="text-lg font-bold text-blue-900">{seatPlan.row_number}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
+                {/* 3. SCHEDULE TABLE (DUAL RESPONSIVE VIEW) */}
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                    <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-indigo-600" />
+                            <h3 className="text-sm font-semibold text-slate-900">Subject Routine & Schedule</h3>
+                        </div>
+                        <span className="text-xs font-semibold text-slate-500">
+                            {schedules.length} Papers
+                        </span>
+                    </div>
 
-                    {/* Exam Schedule */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <BookOpen className="mr-2 h-5 w-5" />
-                                Exam Schedule
-                            </CardTitle>
-                            <CardDescription>Subject-wise examination timetable</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {schedules.length > 0 ? (
-                                <div className="space-y-4">
-                                    {schedules.map((schedule) => (
-                                        <div
-                                            key={schedule.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                                        >
-                                            <div className="flex items-start space-x-4">
-                                                <div className="flex-shrink-0">
-                                                    <div className="flex flex-col items-center justify-center w-16 h-16 bg-indigo-100 rounded-lg">
-                                                        <span className="text-xs text-indigo-600 font-medium">
-                                                            {new Date(schedule.exam_date).toLocaleDateString('en-US', { month: 'short' })}
-                                                        </span>
-                                                        <span className="text-2xl font-bold text-indigo-600">
-                                                            {new Date(schedule.exam_date).getDate()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-gray-900 mb-1">{schedule.subject_name}</h4>
-                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                                                        <span className="flex items-center">
-                                                            <Calendar className="mr-1 h-4 w-4" />
-                                                            {schedule.day}
-                                                        </span>
-                                                        <span className="flex items-center">
-                                                            <Clock className="mr-1 h-4 w-4" />
-                                                            {schedule.start_time} - {schedule.end_time}
-                                                        </span>
-                                                        <Badge variant="outline">
-                                                            {schedule.duration} minutes
-                                                        </Badge>
-                                                        {schedule.room_number && (
-                                                            <span className="flex items-center">
-                                                                <MapPin className="mr-1 h-4 w-4" />
-                                                                Room {schedule.room_number}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
+                    {schedules && schedules.length > 0 ? (
+                        <>
+                            {/* Mobile Card Feed (< 768px) */}
+                            <div className="md:hidden divide-y divide-slate-100">
+                                {schedules.map((item) => (
+                                    <div key={item.id} className="p-3.5 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-xs font-bold text-slate-900">{item.subject_name}</h4>
+                                            <span className="text-[11px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                                {item.duration} Mins
+                                            </span>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">No exam schedule available yet</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                                            <span>Date: <strong>{formatWhen(item.exam_date)}</strong> ({item.day})</span>
+                                            <span>Time: <strong className="font-mono">{formatTimeRange(item.start_time, item.end_time)}</strong></span>
+                                        </div>
+                                        {item.room_number && (
+                                            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                                                <MapPin className="w-3 h-3 text-slate-400" /> Room: {item.room_number}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
 
-                    {/* Instructions */}
-                    <Card className="border-yellow-200 bg-yellow-50">
-                        <CardHeader>
-                            <CardTitle className="text-yellow-900">Important Instructions</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="space-y-2 text-sm text-yellow-900">
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Arrive at the examination hall at least 15 minutes before the scheduled time</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Bring your student ID card and admission slip</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Only blue or black pen is allowed for writing</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Mobile phones and electronic devices are strictly prohibited</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Follow all examination rules and guidelines carefully</span>
-                                </li>
-                            </ul>
-                        </CardContent>
-                    </Card>
+                            {/* Desktop High-Density Table (>= 768px) */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 border-b border-slate-200/80">
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Subject</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Day</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Time</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Duration</th>
+                                            <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Room</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 text-xs">
+                                        {schedules.map((item) => (
+                                            <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                                                <td className="px-4 py-3 font-bold text-slate-900">{item.subject_name}</td>
+                                                <td className="px-4 py-3 text-slate-700 font-medium">
+                                                    {formatWhen(item.exam_date)}
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-600">{item.day}</td>
+                                                <td className="px-4 py-3 text-slate-700 font-mono text-[11px]">{formatTimeRange(item.start_time, item.end_time)}</td>
+                                                <td className="px-4 py-3 text-slate-600">{item.duration} min</td>
+                                                <td className="px-4 py-3 text-slate-700 font-medium">{item.room_number || 'Main Hall'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-slate-600">No subject timetable released yet for this exam</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

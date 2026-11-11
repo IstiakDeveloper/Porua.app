@@ -15,6 +15,7 @@ import {
     Clock,
     Filter
 } from 'lucide-react';
+import { formatBdDate, formatBdDateRange, formatDays, formatDaysCount } from '@/utils/datetime';
 
 interface LeaveType {
     id: number;
@@ -180,7 +181,7 @@ export default function Report({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Leave Days Taken</span>
-                        <p className="mt-2 text-2xl font-black text-slate-900">{stats.total_leave_days} <span className="text-xs font-normal text-slate-400">days</span></p>
+                        <p className="mt-2 text-2xl font-black text-slate-900">{formatDaysCount(stats.total_leave_days)} <span className="text-xs font-normal text-slate-400">days</span></p>
                         <span className="text-[10px] text-emerald-600 font-semibold">{stats.total_approved_requests} approved requests</span>
                     </div>
 
@@ -192,13 +193,13 @@ export default function Report({
 
                     <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Paid Leave Days</span>
-                        <p className="mt-2 text-2xl font-black text-emerald-600">{stats.paid_days} <span className="text-xs font-normal text-slate-400">days</span></p>
+                        <p className="mt-2 text-2xl font-black text-emerald-600">{formatDaysCount(stats.paid_days)} <span className="text-xs font-normal text-slate-400">days</span></p>
                         <span className="text-[10px] text-emerald-600 font-medium">Salaried absence</span>
                     </div>
 
                     <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Unpaid Days</span>
-                        <p className="mt-2 text-2xl font-black text-slate-700">{stats.unpaid_days} <span className="text-xs font-normal text-slate-400">days</span></p>
+                        <p className="mt-2 text-2xl font-black text-slate-700">{formatDaysCount(stats.unpaid_days)} <span className="text-xs font-normal text-slate-400">days</span></p>
                         <span className="text-[10px] text-slate-500 font-medium">Without pay</span>
                     </div>
                 </div>
@@ -329,11 +330,11 @@ export default function Report({
                                                     {used > 0 ? (
                                                         <div>
                                                             <span className="text-xs font-bold text-slate-900">
-                                                                {used}d
+                                                                {formatDaysCount(used)}d
                                                             </span>
                                                             {remaining !== null && (
                                                                 <span className="block text-[10px] text-slate-400">
-                                                                    ({remaining} left)
+                                                                    ({formatDaysCount(remaining)} left)
                                                                 </span>
                                                             )}
                                                         </div>
@@ -349,7 +350,7 @@ export default function Report({
                                                     ? 'bg-sky-50 text-sky-800 ring-1 ring-sky-600/20'
                                                     : 'text-slate-400'
                                             }`}>
-                                                {s.total_days_taken} {s.total_days_taken === 1 ? 'day' : 'days'}
+                                                {formatDays(s.total_days_taken)}
                                             </span>
                                         </td>
                                     </tr>
@@ -392,11 +393,11 @@ export default function Report({
                                         <td className="py-2.5 px-4 text-xs">
                                             <span className="font-semibold text-slate-700">{log.leave_type.name}</span>
                                         </td>
-                                        <td className="py-2.5 px-4 text-xs text-slate-600">
-                                            {log.start_date} to {log.end_date}
+                                        <td className="py-2.5 px-4 text-xs text-slate-600 font-medium">
+                                            {formatBdDateRange(log.start_date, log.end_date)}
                                         </td>
                                         <td className="py-2.5 px-4 text-xs text-center font-bold text-slate-900">
-                                            {log.total_days}
+                                            {formatDays(log.total_days)}
                                         </td>
                                         <td className="py-2.5 px-4 text-xs text-slate-600 max-w-xs truncate">
                                             {log.reason}

@@ -73,9 +73,9 @@ class HandleInertiaRequests extends Middleware
                 ])->pluck('value', 'key')->toArray();
             });
 
-            $name = !empty($settings['institute_name']) 
-                ? $settings['institute_name'] 
-                : (!empty($settings['school_name']) ? $settings['school_name'] : config('app.name', 'Porua.app'));
+            $name = ! empty($settings['institute_name'])
+                ? $settings['institute_name']
+                : (! empty($settings['school_name']) ? $settings['school_name'] : config('app.name', 'Porua.app'));
             $logo = $settings['school_logo'] ?? null;
             $favicon = $settings['school_favicon'] ?? null;
 
@@ -87,8 +87,8 @@ class HandleInertiaRequests extends Middleware
                 'phone' => $settings['school_phone'] ?? '',
                 'address' => $settings['school_address'] ?? '',
                 'website' => $settings['school_website'] ?? '',
-                'logo_url' => $logo ? (str_starts_with($logo, 'http') ? $logo : asset('storage/' . $logo)) : '/logo.png',
-                'favicon_url' => $favicon ? (str_starts_with($favicon, 'http') ? $favicon : asset('storage/' . $favicon)) : '/logo.png',
+                'logo_url' => $logo ? (str_starts_with($logo, 'http') ? $logo : asset('storage/'.$logo)) : '/logo.png',
+                'favicon_url' => $favicon ? (str_starts_with($favicon, 'http') ? $favicon : asset('storage/'.$favicon)) : '/logo.png',
                 'established_year' => $settings['established_year'] ?? '',
                 'currency_symbol' => $settings['currency_symbol'] ?? '৳',
                 'invoice_footer_text' => $settings['invoice_footer_text'] ?? 'Thank you for your payment.',
@@ -120,6 +120,38 @@ class HandleInertiaRequests extends Middleware
                 'warning' => $request->session()->get('warning'),
                 'info' => $request->session()->get('info'),
             ],
+            'parentNav' => function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return null;
+                }
+
+                $user->loadMissing('roles');
+                $isParent = $user->roles->contains(fn ($role) => $role->name === 'Parent');
+                if (! $isParent) {
+                    return null;
+                }
+
+                $urgentNotices = \App\Models\Notice::query()
+                    ->where('is_published', true)
+                    ->whereIn('priority', ['urgent', 'high'])
+                    ->where(function ($query) {
+                        $query->whereJsonContains('target_audience', 'Parent')
+                            ->orWhereJsonContains('target_audience', 'All')
+                            ->orWhereJsonContains('target_audience', 'all');
+                    })
+                    ->count();
+
+                $unreadMessages = \App\Models\Message::query()
+                    ->where('receiver_id', $user->id)
+                    ->whereNull('read_at')
+                    ->count();
+
+                return [
+                    'urgentNotices' => $urgentNotices,
+                    'unreadMessages' => $unreadMessages,
+                ];
+            },
         ];
     }
 }

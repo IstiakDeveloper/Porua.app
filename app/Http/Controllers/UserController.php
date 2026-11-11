@@ -17,17 +17,33 @@ class UserController extends Controller
         $this->authorize('view_users');
 
         $users = User::with('roles')
-            ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%")
-                ->orWhere('email', 'like', "%{$request->search}%"))
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            })
             ->when($request->role, fn ($q) => $q->byRole($request->role))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->latest()
-            ->paginate(20)->withQueryString();
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Users/Index', [
             'users' => $users,
-            'filters' => $request->only(['search', 'role', 'status']),
-            'roles' => Role::all(),
+            'filters' => [
+                'search' => $request->search ?? '',
+                'role' => $request->role ?? '',
+                'status' => $request->status ?? '',
+            ],
+            'roles' => Role::withCount('users')->get(),
+            'stats' => [
+                'total' => User::count(),
+                'active' => User::where('status', 'active')->count(),
+                'inactive' => User::whereIn('status', ['inactive', 'suspended'])->count(),
+            ],
         ]);
     }
 
@@ -46,10 +62,10 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'nullable|string|min:3|max:50|regex:/^[a-zA-Z0-9_.-]+$/|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users',
             'phone' => 'nullable|string|max:20',
             'password' => 'required|string|min:8|confirmed',
-            // Frontend sends role_ids; accept both keys for backward compatibility.
             'role_ids' => 'nullable|array',
             'role_ids.*' => 'exists:roles,id',
             'roles' => 'nullable|array',
@@ -62,27 +78,39 @@ class UserController extends Controller
             return back()->withErrors(['role_ids' => 'Please select at least one role.'])->withInput();
         }
 
+        $username = ! empty($validated['username'])
+            ? trim($validated['username'])
+            : User::generateUniqueUsername($validated['name'], $validated['email'], $validated['phone'] ?? null);
+
         $user = User::create([
             'name' => $validated['name'],
+            'username' => $username,
             'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
             'status' => $validated['status'],
         ]);
 
         $user->roles()->sync($roleIds);
 
-        logActivity('create', "Created user: {$user->name}", User::class, $user->id);
+        logActivity('create', "Created user: {$user->name} (@{$user->username})", User::class, $user->id);
 
         return redirect()->route('users.index')
-            ->with('success', 'User created successfully');
+            ->with('success', 'User created successfully with username @'.$user->username);
     }
 
     public function show(User $user)
     {
         $this->authorize('view_users');
 
-        $user->load(['roles.permissions', 'student', 'teacher', 'staff', 'studentParent']);
+        $user->load([
+            'roles.permissions',
+            'student.schoolClass',
+            'student.section',
+            'teacher',
+            'staff',
+            'studentParent.students',
+        ]);
 
         return Inertia::render('Users/Show', [
             'user' => $user,
@@ -107,6 +135,14 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => [
+                'nullable',
+                'string',
+                'min:3',
+                'max:50',
+                'regex:/^[a-zA-Z0-9_.-]+$/',
+                Rule::unique('users')->ignore($user->id),
+            ],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'phone' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8|confirmed',
@@ -115,10 +151,15 @@ class UserController extends Controller
             'status' => 'required|in:active,inactive,suspended',
         ]);
 
+        $username = ! empty($validated['username'])
+            ? trim($validated['username'])
+            : ($user->username ?: User::generateUniqueUsername($validated['name'], $validated['email'], $validated['phone'] ?? null, $user->id));
+
         $user->update([
             'name' => $validated['name'],
+            'username' => $username,
             'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'phone' => $validated['phone'] ?? null,
             'status' => $validated['status'],
         ]);
 
@@ -130,7 +171,7 @@ class UserController extends Controller
 
         $user->roles()->sync($validated['role_ids']);
 
-        logActivity('update', "Updated user: {$user->name}", User::class, $user->id);
+        logActivity('update', "Updated user: {$user->name} (@{$user->username})", User::class, $user->id);
 
         // If current user changed their own password, logout from current device and redirect to login
         if ($passwordChanged && $user->id === Auth::id()) {
@@ -150,9 +191,29 @@ class UserController extends Controller
             ->with('success', $message);
     }
 
+    public function toggleStatus(User $user)
+    {
+        $this->authorize('edit_users');
+
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'You cannot change your own account status.');
+        }
+
+        $newStatus = $user->status === 'active' ? 'suspended' : 'active';
+        $user->update(['status' => $newStatus]);
+
+        logActivity('update', "Toggled status of user {$user->name} to {$newStatus}", User::class, $user->id);
+
+        return back()->with('success', "User '{$user->name}' status changed to {$newStatus}.");
+    }
+
     public function destroy(User $user)
     {
         $this->authorize('delete_users');
+
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
 
         $userName = $user->name;
         $user->delete();

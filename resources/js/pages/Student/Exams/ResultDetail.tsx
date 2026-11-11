@@ -3,15 +3,17 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import {
     Award,
-    Download,
     Printer,
     ArrowLeft,
-    CheckCircle,
-    XCircle
+    CheckCircle2,
+    XCircle,
+    GraduationCap,
+    School,
+    FileSpreadsheet
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
-import Badge from '@/Components/Badge';
-import Button from '@/Components/Button';
+import FormPageHeader from '@/Components/FormPageHeader';
+import { useInstitute } from '@/hooks/useInstitute';
+import { formatWhen } from '@/utils/datetime';
 
 interface Student {
     id: number;
@@ -56,228 +58,165 @@ interface Props {
     marks: Mark[];
 }
 
-export default function ResultDetail({ student, result, marks }: Props) {
-    const getGradeColor = (grade: string) => {
-        const colors: Record<string, string> = {
-            'A+': 'bg-green-100 text-green-800',
-            'A': 'bg-green-100 text-green-700',
-            'A-': 'bg-blue-100 text-blue-800',
-            'B': 'bg-blue-100 text-blue-700',
-            'C': 'bg-yellow-100 text-yellow-800',
-            'D': 'bg-orange-100 text-orange-800',
-            'F': 'bg-red-100 text-red-800',
-        };
-        return colors[grade] || 'bg-gray-100 text-gray-800';
-    };
-
-    const isPassed = result.result_status.toLowerCase() === 'pass';
+export default function ResultDetail({ student, result, marks = [] }: Props) {
+    const institute = useInstitute();
+    const isPassed = (result?.result_status || '').toLowerCase() === 'pass';
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <Link href="/student/results">
-                            <Button variant="ghost" size="sm">
-                                <ArrowLeft className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                        <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            Result Details
-                        </h2>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => window.print()}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Print
-                        </Button>
-                        <Link href={`/student/results/${result.id}/download`}>
-                            <Button size="sm">
-                                <Download className="mr-2 h-4 w-4" />
-                                Download
-                            </Button>
-                        </Link>
-                    </div>
+        <AuthenticatedLayout>
+            <Head title={`${result.exam_name} - Marksheet`} />
+
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <div className="print:hidden">
+                    <FormPageHeader
+                        title={`${result.exam_name} - Marksheet`}
+                        subtitle={`${student.full_name} • Class ${student.class_name} (${student.section_name}) • Roll #${student.roll_number}`}
+                        backUrl="/student/results"
+                        badges={[
+                            { label: isPassed ? 'PASSED' : 'FAILED', variant: isPassed ? 'success' : 'neutral' },
+                            { label: `GPA ${Number(result.gpa).toFixed(2)} (${result.grade})`, variant: 'neutral' }
+                        ]}
+                        actionSlot={
+                            <a
+                                href={`/student/results/${result.id}/download`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-2xs"
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                Print Marksheet
+                            </a>
+                        }
+                    />
                 </div>
-            }
-        >
-            <Head title={`${result.exam_name} - Result`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-4xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Marksheet Card */}
-                    <Card className="print:shadow-none">
-                        {/* Header */}
-                        <CardHeader className="text-center border-b print:border-black">
-                            <div className="mb-4">
-                                <h1 className="text-2xl font-bold text-gray-900">School Management System</h1>
-                                <p className="text-sm text-gray-600">Academic Marksheet</p>
-                            </div>
+                {/* 2. OFFICIAL MARKSHEET CARD CONTAINER (PRINT-READY) */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs print:border-none print:shadow-none print:p-0">
+                    {/* Institutional Header (Shown on print & web) */}
+                    <div className="text-center pb-4 mb-4 border-b border-slate-200">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                            <GraduationCap className="w-6 h-6 text-indigo-600 print:text-black" />
+                            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                                {institute.name || 'Institutional Academic Management'}
+                            </h1>
+                        </div>
+                        {institute.address && <p className="text-xs text-slate-500">{institute.address}</p>}
+                        <h2 className="text-sm sm:text-base font-bold text-indigo-700 uppercase tracking-widest mt-2 print:text-black">
+                            Academic Progress Report / Marksheet
+                        </h2>
+                        <p className="text-xs text-slate-600 font-semibold">{result.exam_name}</p>
+                    </div>
 
-                            <div className="flex items-center justify-center">
-                                <Badge
-                                    variant={isPassed ? 'default' : 'destructive'}
-                                    className={`text-lg px-4 py-1 ${isPassed ? 'bg-green-600' : 'bg-red-600'}`}
-                                >
-                                    {isPassed ? (
-                                        <CheckCircle className="mr-2 h-5 w-5" />
-                                    ) : (
-                                        <XCircle className="mr-2 h-5 w-5" />
-                                    )}
-                                    {result.result_status}
-                                </Badge>
-                            </div>
-                        </CardHeader>
+                    {/* Student Metadata Box */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-3.5 rounded-lg bg-slate-50/70 border border-slate-200/80 mb-5 text-xs">
+                        <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Student Name</span>
+                            <strong className="text-slate-900 font-bold">{student.full_name}</strong>
+                        </div>
+                        <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Class & Section</span>
+                            <strong className="text-slate-800">Class {student.class_name} ({student.section_name})</strong>
+                        </div>
+                        <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Roll / Student ID</span>
+                            <strong className="text-slate-800">Roll #{student.roll_number} • ID: {student.admission_number}</strong>
+                        </div>
+                        <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Exam Date</span>
+                            <strong className="text-slate-800">{formatWhen(result.exam_date)}</strong>
+                        </div>
+                    </div>
 
-                        <CardContent className="p-6">
-                            {/* Student Information */}
-                            <div className="mb-6 grid grid-cols-2 gap-4 pb-4 border-b">
-                                <div>
-                                    <p className="text-sm text-gray-600">Student Name</p>
-                                    <p className="font-semibold">{student.full_name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Admission Number</p>
-                                    <p className="font-semibold">{student.admission_number}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Class</p>
-                                    <p className="font-semibold">{student.class_name} - {student.section_name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Roll Number</p>
-                                    <p className="font-semibold">{student.roll_number}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Examination</p>
-                                    <p className="font-semibold">{result.exam_name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Exam Date</p>
-                                    <p className="font-semibold">{result.exam_date}</p>
-                                </div>
-                            </div>
+                    {/* Performance Summary Strip */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                        <div className="p-3 rounded-lg border border-slate-200/80 bg-white text-center">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Marks</span>
+                            <span className="text-lg font-bold text-slate-900 font-mono">
+                                {result.obtained_marks} / {result.total_marks}
+                            </span>
+                            <span className="text-[11px] text-slate-500 block">({Number(result.percentage).toFixed(1)}%)</span>
+                        </div>
+                        <div className="p-3 rounded-lg border border-slate-200/80 bg-white text-center">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grade & GPA</span>
+                            <span className="text-lg font-bold text-indigo-700">
+                                {result.grade} ({Number(result.gpa).toFixed(2)})
+                            </span>
+                            <span className="text-[11px] text-slate-500 block">Scale: 5.00</span>
+                        </div>
+                        <div className="p-3 rounded-lg border border-slate-200/80 bg-white text-center">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Class Position</span>
+                            <span className="text-lg font-bold text-slate-800">
+                                #{result.class_position || 'N/A'}
+                            </span>
+                            <span className="text-[11px] text-slate-500 block">Section: #{result.section_position || 'N/A'}</span>
+                        </div>
+                        <div className="p-3 rounded-lg border border-slate-200/80 bg-white text-center">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Final Status</span>
+                            <span className={`text-lg font-bold ${isPassed ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                {result.result_status.toUpperCase()}
+                            </span>
+                            <span className="text-[11px] text-slate-500 block">{result.remarks || 'Standard Evaluation'}</span>
+                        </div>
+                    </div>
 
-                            {/* Marks Table */}
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold mb-3">Subject-wise Performance</h3>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse border">
-                                        <thead>
-                                            <tr className="bg-gray-50">
-                                                <th className="border p-3 text-left text-sm font-semibold">Subject</th>
-                                                <th className="border p-3 text-center text-sm font-semibold">Theory</th>
-                                                <th className="border p-3 text-center text-sm font-semibold">Practical</th>
-                                                <th className="border p-3 text-center text-sm font-semibold">Total</th>
-                                                <th className="border p-3 text-center text-sm font-semibold">Obtained</th>
-                                                <th className="border p-3 text-center text-sm font-semibold">Grade</th>
-                                                <th className="border p-3 text-center text-sm font-semibold">GP</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {marks.map((mark) => (
-                                                <tr key={mark.id} className={mark.is_absent ? 'bg-red-50' : ''}>
-                                                    <td className="border p-3 text-sm font-medium">
-                                                        {mark.subject_name}
-                                                    </td>
-                                                    <td className="border p-3 text-center text-sm">
-                                                        {mark.is_absent ? 'AB' : mark.theory_marks || '-'}
-                                                    </td>
-                                                    <td className="border p-3 text-center text-sm">
-                                                        {mark.is_absent ? 'AB' : mark.practical_marks || '-'}
-                                                    </td>
-                                                    <td className="border p-3 text-center text-sm font-semibold">
-                                                        {mark.total_marks}
-                                                    </td>
-                                                    <td className="border p-3 text-center text-sm font-semibold">
-                                                        {mark.is_absent ? 'AB' : mark.obtained_marks}
-                                                    </td>
-                                                    <td className="border p-3 text-center">
-                                                        <Badge className={getGradeColor(mark.grade)}>
-                                                            {mark.grade}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="border p-3 text-center text-sm font-semibold">
-                                                        {mark.is_absent ? '0.00' : mark.grade_point}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            <tr className="bg-gray-100 font-semibold">
-                                                <td className="border p-3 text-sm" colSpan={3}>Total</td>
-                                                <td className="border p-3 text-center text-sm">{result.total_marks}</td>
-                                                <td className="border p-3 text-center text-sm">{result.obtained_marks}</td>
-                                                <td className="border p-3 text-center">
-                                                    <Badge className={getGradeColor(result.grade)}>
-                                                        {result.grade}
-                                                    </Badge>
-                                                </td>
-                                                <td className="border p-3 text-center text-sm">{result.gpa}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    {/* Subject-Wise Marks Breakdown Table */}
+                    <div className="overflow-x-auto border border-slate-200/80 rounded-lg">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="bg-slate-50/80 border-b border-slate-200/80">
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Subject</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider text-center">Theory</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider text-center">Practical</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider text-center">Total Marks</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider text-center">Obtained</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider text-center">Grade Point</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider text-center">Grade</th>
+                                    <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {marks.map((m) => (
+                                    <tr key={m.id} className="hover:bg-slate-50/50">
+                                        <td className="px-4 py-2.5 font-bold text-slate-900">{m.subject_name}</td>
+                                        <td className="px-4 py-2.5 text-center text-slate-600 font-mono">{m.theory_marks ?? '—'}</td>
+                                        <td className="px-4 py-2.5 text-center text-slate-600 font-mono">{m.practical_marks ?? '—'}</td>
+                                        <td className="px-4 py-2.5 text-center text-slate-600 font-mono">{m.total_marks}</td>
+                                        <td className="px-4 py-2.5 text-center font-bold text-slate-900 font-mono">
+                                            {m.is_absent ? (
+                                                <span className="text-rose-600 font-bold">ABSENT</span>
+                                            ) : (
+                                                m.obtained_marks
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center font-bold text-slate-800 font-mono">{m.grade_point}</td>
+                                        <td className="px-4 py-2.5 text-center">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                                {m.grade}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-500">{m.remarks || '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-                            {/* Result Summary */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600">Total Marks</p>
-                                    <p className="text-xl font-bold">{result.total_marks}</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600">Obtained</p>
-                                    <p className="text-xl font-bold text-blue-600">{result.obtained_marks}</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600">Percentage</p>
-                                    <p className="text-xl font-bold text-green-600">{result.percentage}%</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600">GPA</p>
-                                    <p className="text-xl font-bold text-purple-600">{result.gpa}</p>
-                                </div>
-                            </div>
-
-                            {/* Position */}
-                            <div className="mt-4 grid grid-cols-2 gap-4">
-                                <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                                    <p className="text-sm text-gray-600">Class Position</p>
-                                    <p className="text-2xl font-bold text-yellow-600 flex items-center justify-center">
-                                        <Award className="mr-2 h-6 w-6" />
-                                        {result.class_position}
-                                    </p>
-                                </div>
-                                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                    <p className="text-sm text-gray-600">Section Position</p>
-                                    <p className="text-2xl font-bold text-blue-600 flex items-center justify-center">
-                                        <Award className="mr-2 h-6 w-6" />
-                                        {result.section_position}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Remarks */}
-                            {result.remarks && (
-                                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                    <p className="text-sm font-semibold text-gray-700 mb-1">Remarks:</p>
-                                    <p className="text-sm text-gray-600">{result.remarks}</p>
-                                </div>
-                            )}
-
-                            {/* Footer */}
-                            <div className="mt-8 pt-6 border-t print:flex print:justify-between">
-                                <div className="text-sm text-gray-600">
-                                    <p>Generated on: {new Date().toLocaleDateString()}</p>
-                                </div>
-                                <div className="mt-4 print:mt-0 text-sm text-gray-600 print:text-right">
-                                    <p className="mb-12">Signature</p>
-                                    <p className="border-t border-gray-400 pt-1 inline-block">
-                                        Principal / Class Teacher
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Print Signatures Block */}
+                    <div className="hidden print:flex items-end justify-between pt-16 px-4 text-xs font-semibold text-slate-700">
+                        <div className="text-center">
+                            <div className="w-36 border-t border-slate-800 mb-1" />
+                            Class Teacher
+                        </div>
+                        <div className="text-center">
+                            <div className="w-36 border-t border-slate-800 mb-1" />
+                            Controller of Examinations
+                        </div>
+                        <div className="text-center">
+                            <div className="w-36 border-t border-slate-800 mb-1" />
+                            Principal / Headmaster
+                        </div>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

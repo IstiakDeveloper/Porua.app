@@ -7,11 +7,11 @@ import {
     Clock,
     Users,
     Search,
-    Info,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Sparkles
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Components/Card';
+import FormPageHeader from '@/Components/FormPageHeader';
 
 interface Event {
     id: number;
@@ -35,7 +35,12 @@ interface Props {
     };
 }
 
-export default function Index({ events, filters }: Props) {
+const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export default function Index({ events = [], filters }: Props) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedType, setSelectedType] = useState(filters.type || 'all');
     const [currentMonth, setCurrentMonth] = useState(filters.month);
@@ -71,186 +76,136 @@ export default function Index({ events, filters }: Props) {
     );
 
     const getTypeBadge = (type: string) => {
-        const colors: Record<string, string> = {
-            'Academic': 'bg-blue-600',
-            'Sports': 'bg-green-600',
-            'Cultural': 'bg-purple-600',
-            'Workshop': 'bg-orange-600',
-            'Meeting': 'bg-gray-600',
-            'Celebration': 'bg-pink-600',
-            'Competition': 'bg-red-600',
-            'Other': 'bg-gray-500'
-        };
-        return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${colors[type] || 'bg-gray-600'}`}>{type}</span>;
+        const t = (type || '').toLowerCase();
+        if (t === 'academic') return 'bg-blue-50 text-blue-700 border-blue-200';
+        if (t === 'sports') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (t === 'cultural') return 'bg-purple-50 text-purple-700 border-purple-200';
+        if (t === 'workshop') return 'bg-amber-50 text-amber-700 border-amber-200';
+        return 'bg-slate-100 text-slate-700 border-slate-200';
     };
 
-    const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    const EventCard = ({ event }: { event: Event }) => (
-        <div className="p-4 border rounded-lg hover:shadow-md transition cursor-pointer hover:bg-gray-50">
-            <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-semibold text-lg">{event.title}</h3>
-                    </div>
-                    {getTypeBadge(event.type)}
-                </div>
-                <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-600">
-                        {new Date(event.event_date).getDate()}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                        {monthNames[new Date(event.event_date).getMonth()].slice(0, 3)}
-                    </div>
-                </div>
-            </div>
-
-            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                {event.description}
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center text-gray-600">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {event.event_date_formatted}
-                </div>
-                <div className="flex items-center text-gray-600">
-                    <Clock className="mr-2 h-4 w-4" />
-                    {event.start_time} - {event.end_time}
-                </div>
-                <div className="flex items-center text-gray-600">
-                    <MapPin className="mr-2 h-4 w-4" />
-                    {event.location}
-                </div>
-                <div className="flex items-center text-gray-600">
-                    <Users className="mr-2 h-4 w-4" />
-                    {event.organizer}
-                </div>
-            </div>
-        </div>
-    );
-
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Events & Activities
-                </h2>
-            }
-        >
-            <Head title="Events" />
+        <AuthenticatedLayout>
+            <Head title="School Events" />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                    {/* Month Navigation */}
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <button
-                                    onClick={() => navigateMonth('prev')}
-                                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                >
-                                    <ChevronLeft className="h-4 w-4 mr-1" />
-                                    Previous
-                                </button>
+            <div className="space-y-4 pb-8">
+                {/* 1. STANDARDIZED PAGE HEADER */}
+                <FormPageHeader
+                    title="School Events & Programs"
+                    subtitle="Upcoming co-curricular activities, competitions, and celebrations"
+                    backUrl="/student/dashboard"
+                    badges={[
+                        { label: `${monthNames[currentMonth - 1]} ${currentYear}`, variant: 'neutral' },
+                        { label: `${events.length} Events`, variant: 'neutral' }
+                    ]}
+                />
 
-                                <div className="text-center">
-                                    <h3 className="text-2xl font-bold">{monthNames[currentMonth - 1]} {currentYear}</h3>
-                                    <p className="text-sm text-gray-600">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}</p>
-                                </div>
+                {/* 2. FILTER & SEARCH CONTROLS */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+                    <div className="relative w-full md:w-72">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search event title, venue..."
+                            className="w-full text-xs py-2 pl-9 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                        />
+                    </div>
 
-                                <button
-                                    onClick={() => navigateMonth('next')}
-                                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                >
-                                    Next
-                                    <ChevronRight className="h-4 w-4 ml-1" />
-                                </button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                        <select
+                            value={selectedType}
+                            onChange={(e) => {
+                                setSelectedType(e.target.value);
+                                handleFilter(e.target.value, currentMonth, currentYear);
+                            }}
+                            className="text-xs font-medium bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
+                        >
+                            <option value="all">All Event Categories</option>
+                            <option value="Academic">Academic</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Cultural">Cultural</option>
+                            <option value="Workshop">Workshop</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Celebration">Celebration</option>
+                        </select>
 
-                    {/* Search & Filters */}
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search events..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => navigateMonth('prev')}
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs font-bold text-slate-800 min-w-[110px] text-center">
+                                {monthNames[currentMonth - 1]} {currentYear}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => navigateMonth('next')}
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-                                <select
-                                    value={selectedType}
-                                    onChange={(e) => {
-                                        setSelectedType(e.target.value);
-                                        handleFilter(e.target.value, currentMonth, currentYear);
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="all">All Types</option>
-                                    <option value="Academic">Academic</option>
-                                    <option value="Sports">Sports</option>
-                                    <option value="Cultural">Cultural</option>
-                                    <option value="Workshop">Workshop</option>
-                                    <option value="Meeting">Meeting</option>
-                                    <option value="Celebration">Celebration</option>
-                                    <option value="Competition">Competition</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                        </CardContent>
-                    </Card>
+                {/* 3. EVENTS GRID */}
+                {filteredEvents && filteredEvents.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredEvents.map((event) => (
+                            <div
+                                key={event.id}
+                                className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs hover:border-slate-300 transition-colors flex flex-col justify-between"
+                            >
+                                <div>
+                                    <div className="flex items-start justify-between gap-3 mb-2.5">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex flex-col items-center justify-center shrink-0">
+                                                <span className="text-[10px] uppercase font-bold text-indigo-500">
+                                                    {new Date(event.event_date).toLocaleDateString('en-GB', { month: 'short' })}
+                                                </span>
+                                                <span className="text-base font-bold text-indigo-700 leading-none">
+                                                    {new Date(event.event_date).getDate()}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-slate-900 line-clamp-1">{event.title}</h3>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">Organized by {event.organizer || 'School Authority'}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${getTypeBadge(event.type)}`}>
+                                            {event.type}
+                                        </span>
+                                    </div>
 
-                    {/* Events List */}
-                    {filteredEvents.length > 0 ? (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <CalendarIcon className="mr-2 h-5 w-5 text-blue-600" />
-                                    Events for {monthNames[currentMonth - 1]} {currentYear}
-                                </CardTitle>
-                                <CardDescription>{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {filteredEvents.map((event) => (
-                                        <EventCard key={event.id} event={event} />
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <Card>
-                            <CardContent className="pt-6 text-center py-12">
-                                <CalendarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                                <p className="text-gray-500">No events found for {monthNames[currentMonth - 1]} {currentYear}</p>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* No Events */}
-                    {filteredEvents.length === 0 && (
-                        <Card>
-                            <CardContent className="py-12">
-                                <div className="text-center">
-                                    <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">
-                                        {searchTerm ? 'No events found matching your search' : 'No events scheduled for this month'}
+                                    <p className="text-xs text-slate-600 line-clamp-3 mb-4 leading-relaxed">
+                                        {event.description}
                                     </p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
+
+                                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                                    <span className="flex items-center gap-1.5 font-mono">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                        {event.start_time} - {event.end_time}
+                                    </span>
+                                    <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                        {event.location}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-12 text-center shadow-2xs">
+                        <CalendarIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                        <p className="text-xs font-semibold text-slate-700">No events scheduled for {monthNames[currentMonth - 1]} {currentYear}</p>
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

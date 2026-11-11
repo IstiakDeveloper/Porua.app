@@ -3,39 +3,23 @@
 namespace App\Http\Controllers\Parent;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudentParent;
-use App\Models\Student;
-use App\Models\StudentAttendance;
 use App\Models\FeeCollection;
-use App\Models\Result;
-use App\Models\Notice;
 use App\Models\Message;
+use App\Models\Notice;
+use App\Models\StudentAttendance;
+use App\Support\ParentPortal;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class ParentDashboardController extends Controller
 {
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
+        $parent = ParentPortal::parent($user);
+        $children = ParentPortal::children($parent);
 
-        // Get all children linked directly or through pivot
-        $children = Student::where('parent_id', $parent->id)
-            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
-            ->with(['schoolClass', 'section'])
-            ->get();
-
-        // Get today's attendance for all children
         $todayAttendance = [];
         foreach ($children as $child) {
             $attendance = StudentAttendance::where('student_id', $child->id)
@@ -44,24 +28,9 @@ class ParentDashboardController extends Controller
 
             $todayAttendance[$child->id] = [
                 'status' => $attendance ? $attendance->status : 'not_marked',
-                'remarks' => $attendance ? $attendance->remarks : null,
             ];
         }
 
-        // Get recent exam results for all children
-        $recentResults = [];
-        foreach ($children as $child) {
-            $results = Result::where('student_id', $child->id)
-                ->where('is_published', true)
-                ->with('exam')
-                ->orderBy('created_at', 'desc')
-                ->take(3)
-                ->get();
-
-            $recentResults[$child->id] = $results;
-        }
-
-        // Get fee status for all children
         $feeStatus = [];
         foreach ($children as $child) {
             $outstanding = FeeCollection::where('student_id', $child->id)->outstanding()->get();
@@ -72,7 +41,6 @@ class ParentDashboardController extends Controller
             ];
         }
 
-        // Get recent notices
         $recentNotices = Notice::where('is_published', true)
             ->where(function ($query) {
                 $query->whereJsonContains('target_audience', 'Parent')
@@ -80,10 +48,20 @@ class ParentDashboardController extends Controller
                     ->orWhereJsonContains('target_audience', 'all');
             })
             ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
+            ->take(3)
+            ->get()
+            ->map(function ($notice) {
+                return [
+                    'id' => $notice->id,
+                    'title' => $notice->title,
+                    'type' => $notice->type,
+                    'priority' => $notice->priority,
+                    'publish_date' => $notice->published_at
+                        ? $notice->published_at->format('d M Y')
+                        : $notice->created_at->format('d M Y'),
+                ];
+            });
 
-        // Get unread messages
         $unreadMessages = Message::where('receiver_id', $user->id)
             ->whereNull('read_at')
             ->count();
@@ -91,26 +69,22 @@ class ParentDashboardController extends Controller
         return Inertia::render('Parent/Dashboard', [
             'parent' => [
                 'id' => $parent->id,
-                'father_name' => $parent->father_name ?? $user->name,
+                'father_name' => $parent->father_name ?? '',
                 'mother_name' => $parent->mother_name ?? '',
                 'phone' => $parent->phone ?? $user->phone ?? '',
                 'email' => $parent->email ?? $user->email,
+                'account_name' => $user->name,
             ],
-            'children' => $children->map(function ($child) use ($todayAttendance, $recentResults, $feeStatus) {
+            'children' => $children->map(function ($child) use ($todayAttendance, $feeStatus) {
                 return [
-                    'id' => $child->id,
-                    'full_name' => $child->full_name,
-                    'admission_number' => $child->admission_number,
-                    'roll_number' => $child->roll_number,
-                    'photo' => $child->photo,
-                    'class_name' => $child->schoolClass->name ?? 'N/A',
-                    'section_name' => $child->section->name ?? 'N/A',
+                    ...ParentPortal::childOption($child),
                     'today_attendance' => $todayAttendance[$child->id] ?? ['status' => 'not_marked'],
-                    'recent_results' => $recentResults[$child->id] ?? [],
+                    'today_class' => ParentPortal::todayClass($child),
                     'fee_status' => $feeStatus[$child->id] ?? ['total_due' => 0, 'overdue_count' => 0],
                 ];
             }),
             'recentNotices' => $recentNotices,
+            'nextEvent' => ParentPortal::nextEvent(),
             'unreadMessages' => $unreadMessages,
         ]);
     }

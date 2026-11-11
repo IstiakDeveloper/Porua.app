@@ -50,6 +50,7 @@ export interface Exam {
     created_at: string;
     updated_at: string;
     academicYear?: AcademicYear;
+    academic_year?: AcademicYear;
     classes?: SchoolClass[];
     schedules?: ExamSchedule[];
 }
@@ -59,7 +60,8 @@ export interface ExamSchedule {
     exam_id: number;
     class_id: number;
     subject_id: number;
-    date: string;
+    date?: string;
+    exam_date?: string;
     start_time: string;
     end_time: string;
     full_marks: number;
@@ -70,6 +72,7 @@ export interface ExamSchedule {
     updated_at: string;
     exam?: Exam;
     schoolClass?: SchoolClass;
+    school_class?: SchoolClass;
     subject?: Subject;
     invigilators?: ExamInvigilator[];
 }
@@ -82,6 +85,7 @@ export interface Mark {
     subject_id: number;
     theory_marks?: number;
     practical_marks?: number;
+    obtained_marks?: number | string | null;
     total_marks: number;
     grade?: string;
     remarks?: string;
@@ -101,9 +105,12 @@ export interface Result {
     class_id: number;
     total_marks: number;
     obtained_marks: number;
-    percentage: number;
+    percentage: number | string;
     grade: string;
-    gpa: number;
+    gpa: number | string;
+    class_position?: number | null;
+    section_position?: number | null;
+    result_status?: string;
     status: 'pass' | 'fail';
     remarks?: string;
     is_published: boolean;

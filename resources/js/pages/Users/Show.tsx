@@ -1,22 +1,79 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Button from '@/Components/Button';
 import Badge from '@/Components/Badge';
-import { ArrowLeft, Edit, Trash2, Mail, Phone, Shield, Calendar, User as UserIcon } from 'lucide-react';
+import FormPageHeader from '@/Components/FormPageHeader';
+import FormCard from '@/Components/FormCard';
+import StatusToggle from '@/Components/StatusToggle';
+import DeleteModal from '@/Components/DeleteModal';
+import {
+    Edit,
+    Trash2,
+    Mail,
+    Phone,
+    Shield,
+    Calendar,
+    User as UserIcon,
+    AtSign,
+    Clock,
+    Key,
+    GraduationCap,
+    BookOpen,
+    Users,
+    CheckCircle2,
+    AlertCircle,
+    Building2
+} from 'lucide-react';
+import { formatBdDate } from '@/utils/datetime';
+
+interface Permission {
+    id: number;
+    name: string;
+    slug: string;
+    module?: string;
+}
 
 interface Role {
     id: number;
     name: string;
+    slug?: string;
+    permissions?: Permission[];
 }
 
 interface User {
     id: number;
     name: string;
+    username?: string | null;
     email: string;
-    phone?: string;
+    phone?: string | null;
     status: string;
+    last_login_at?: string | null;
+    last_login_ip?: string | null;
     roles: Role[];
+    student?: {
+        id: number;
+        admission_number: string;
+        roll_number: string;
+        school_class?: { name: string };
+        section?: { name: string };
+    } | null;
+    teacher?: {
+        id: number;
+        employee_id?: string;
+        designation?: string;
+        department?: string;
+    } | null;
+    staff?: {
+        id: number;
+        employee_id?: string;
+        designation?: string;
+        department?: string;
+    } | null;
+    student_parent?: {
+        id: number;
+        students?: Array<{ id: number; full_name?: string; admission_number?: string }>;
+    } | null;
     created_at: string;
     updated_at: string;
 }
@@ -26,189 +83,343 @@ interface ShowProps {
 }
 
 export default function Show({ user }: ShowProps) {
-    const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this user?')) {
-            router.delete(`/users/${user.id}`);
-        }
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [toggling, setToggling] = useState(false);
+
+    const handleToggleStatus = () => {
+        setToggling(true);
+        router.patch(
+            `/users/${user.id}/toggle-status`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setToggling(false),
+            }
+        );
     };
 
-    const getRoleBadgeColor = (role: string): any => {
+    const confirmDelete = () => {
+        router.delete(`/users/${user.id}`, {
+            onFinish: () => setDeleteOpen(false),
+        });
+    };
+
+    const getRoleBadgeVariant = (role: string): any => {
         const colors: Record<string, any> = {
             'Super Admin': 'purple',
+            'Admin': 'purple',
             'Principal': 'info',
             'Teacher': 'success',
             'Accountant': 'warning',
-            'Librarian': 'cyan',
-            'Student': 'pink',
-            'Parent': 'indigo',
+            'Librarian': 'info',
+            'Student': 'default',
+            'Parent': 'info',
         };
         return colors[role] || 'default';
     };
 
+    // Collect all unique permissions across all assigned roles
+    const allPermissions = (user.roles || []).flatMap((r) => r.permissions || []);
+    const uniquePermissions = Array.from(new Map(allPermissions.map((p) => [p.id, p])).values());
+
     return (
         <AuthenticatedLayout>
-            <Head title={`User: ${user.name}`} />
+            <Head title={`User Profile: ${user.name}`} />
 
-            <div className="space-y-6 animate-fade-in">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            icon={<ArrowLeft className="w-5 h-5" />}
-                            onClick={() => router.visit('/users')}
-                            className="hover:bg-blue-50 hover:text-blue-600"
-                        >
-                            Back
-                        </Button>
-                        <div>
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                User Details
-                            </h1>
-                            <p className="text-gray-600 mt-1">View user information and settings</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-3">
-                        <Link href={`/users/${user.id}/edit`}>
+            <div className="max-w-5xl mx-auto space-y-5 pb-12">
+                {/* Standardized Header */}
+                <FormPageHeader
+                    title={user.name}
+                    subtitle={`@${user.username || 'no-username'} • Institutional User Account`}
+                    backUrl="/users"
+                    badge="User Profile"
+                    actionSlot={
+                        <div className="flex items-center gap-2">
+                            <Link href={`/users/${user.id}/edit`}>
+                                <Button size="sm" icon={<Edit className="w-3.5 h-3.5" />} className="text-xs">
+                                    Edit Account
+                                </Button>
+                            </Link>
                             <Button
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                                icon={<Edit className="w-5 h-5" />}
+                                variant="danger"
+                                size="sm"
+                                onClick={() => setDeleteOpen(true)}
+                                icon={<Trash2 className="w-3.5 h-3.5" />}
+                                className="text-xs"
                             >
-                                Edit User
+                                Delete
                             </Button>
-                        </Link>
-                        <Button
-                            variant="danger"
-                            onClick={handleDelete}
-                            icon={<Trash2 className="w-5 h-5" />}
-                        >
-                            Delete
-                        </Button>
-                    </div>
-                </div>
-
-                {/* User Profile Card */}
-                <div className="bg-white/80 backdrop-blur-xl rounded-xl shadow-lg border border-gray-200/50 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-32 relative">
-                        <div className="absolute -bottom-12 left-8">
-                            <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-xl flex items-center justify-center border-4 border-white">
-                                <UserIcon className="w-12 h-12 text-white" />
-                            </div>
                         </div>
-                    </div>
-                    <div className="pt-16 px-8 pb-8">
-                        <div className="flex items-start justify-between">
+                    }
+                />
+
+                {/* Profile Hero Card */}
+                <div className="bg-white rounded-xl border border-emerald-100 p-5 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-200 flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
+                                {user.name ? user.name.charAt(0).toUpperCase() : <UserIcon className="w-8 h-8" />}
+                            </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <Badge
-                                        variant={user.status === 'active' ? 'success' : 'default'}
-                                        className="capitalize"
-                                    >
-                                        {user.status}
-                                    </Badge>
-                                    <span className="text-sm text-gray-500">
-                                        Member since {new Date(user.created_at).toLocaleDateString('en-US', {
-                                            month: 'long',
-                                            year: 'numeric'
-                                        })}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h1 className="text-lg font-bold text-gray-900">{user.name}</h1>
+                                    <div className="flex items-center gap-1.5 font-mono text-xs px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        <AtSign className="w-3 h-3 text-emerald-600" />
+                                        <span>{user.username || 'no-username'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 flex-wrap">
+                                    <span className="flex items-center gap-1">
+                                        <Mail className="w-3.5 h-3.5 text-gray-400" />
+                                        {user.email}
                                     </span>
+                                    {user.phone && (
+                                        <span className="flex items-center gap-1 font-mono">
+                                            <Phone className="w-3.5 h-3.5 text-gray-400" />
+                                            {user.phone}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-2">
+                            <div className="flex items-center gap-2">
+                                <StatusToggle
+                                    checked={user.status === 'active'}
+                                    onChange={handleToggleStatus}
+                                    loading={toggling}
+                                    activeLabel="Active"
+                                    inactiveLabel="Suspended"
+                                />
+                            </div>
+                            <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                Member since {formatBdDate(user.created_at, 'long')}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Information Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Contact Information */}
-                    <div className="bg-white/80 backdrop-blur-xl rounded-xl shadow-lg border border-gray-200/50 p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <Mail className="w-5 h-5 text-blue-600" />
-                            Contact Information
-                        </h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Email Address</label>
-                                <div className="mt-1 flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-gray-400" />
-                                    <p className="text-gray-900">{user.email}</p>
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    {/* Left Column: Account Details (2 cols) */}
+                    <div className="lg:col-span-2 space-y-5">
+                        {/* Institutional Affiliation if Linked */}
+                        {user.student && (
+                            <FormCard
+                                title="Student Enrolment Record"
+                                description="Linked student profile details in current academic database"
+                                icon={<GraduationCap className="w-5 h-5 text-emerald-600" />}
+                            >
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Admission No</span>
+                                        <span className="font-mono font-bold text-gray-800 text-sm mt-0.5 block">
+                                            {user.student.admission_number || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Class & Section</span>
+                                        <span className="font-semibold text-gray-800 text-sm mt-0.5 block">
+                                            {user.student.school_class?.name || 'Class —'} {user.student.section?.name ? `(${user.student.section.name})` : ''}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Roll Number</span>
+                                        <span className="font-mono font-bold text-gray-800 text-sm mt-0.5 block">
+                                            {user.student.roll_number || '—'}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Phone Number</label>
-                                <div className="mt-1 flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-gray-400" />
-                                    <p className="text-gray-900">{user.phone || 'Not provided'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </FormCard>
+                        )}
 
-                    {/* Role Information */}
-                    <div className="bg-white/80 backdrop-blur-xl rounded-xl shadow-lg border border-gray-200/50 p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <Shield className="w-5 h-5 text-purple-600" />
-                            Assigned Roles
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {user.roles.map((role, i) => (
-                                <Badge key={i} variant={getRoleBadgeColor(role.name)} className="text-sm px-4 py-2">
-                                    {role.name}
-                                </Badge>
-                            ))}
-                            {user.roles.length === 0 && (
-                                <p className="text-gray-500 text-sm">No roles assigned</p>
+                        {user.teacher && (
+                            <FormCard
+                                title="Faculty & Teaching Profile"
+                                description="Associated teacher and department appointment details"
+                                icon={<BookOpen className="w-5 h-5 text-emerald-600" />}
+                            >
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Employee ID</span>
+                                        <span className="font-mono font-bold text-gray-800 text-sm mt-0.5 block">
+                                            {user.teacher.employee_id || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Designation</span>
+                                        <span className="font-semibold text-gray-800 text-sm mt-0.5 block">
+                                            {user.teacher.designation || 'Teacher'}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Department</span>
+                                        <span className="font-semibold text-gray-800 text-sm mt-0.5 block">
+                                            {user.teacher.department || 'General'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </FormCard>
+                        )}
+
+                        {user.staff && (
+                            <FormCard
+                                title="Administrative Staff Details"
+                                description="Administrative role details and department assignment"
+                                icon={<Building2 className="w-5 h-5 text-emerald-600" />}
+                            >
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Employee ID</span>
+                                        <span className="font-mono font-bold text-gray-800 text-sm mt-0.5 block">
+                                            {user.staff.employee_id || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Designation</span>
+                                        <span className="font-semibold text-gray-800 text-sm mt-0.5 block">
+                                            {user.staff.designation || 'Staff'}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Department</span>
+                                        <span className="font-semibold text-gray-800 text-sm mt-0.5 block">
+                                            {user.staff.department || 'Administration'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </FormCard>
+                        )}
+
+                        {/* Account Authentication & Activity */}
+                        <FormCard
+                            title="Account Authentication & Security"
+                            description="Credentials details, session information, and login history"
+                            icon={<Shield className="w-5 h-5 text-emerald-600" />}
+                        >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                <div className="space-y-1">
+                                    <span className="text-gray-500 font-medium">Unique Login Username</span>
+                                    <p className="font-mono font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200">
+                                        @{user.username || 'no-username'}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <span className="text-gray-500 font-medium">Primary Email Address</span>
+                                    <p className="font-mono font-semibold text-gray-800 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                                        {user.email}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <span className="text-gray-500 font-medium">Last Login Timestamp</span>
+                                    <p className="text-gray-700 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                        {user.last_login_at
+                                            ? `${formatBdDate(user.last_login_at)} ${new Date(user.last_login_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                            : 'No recorded login'}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <span className="text-gray-500 font-medium">Last Login IP Address</span>
+                                    <p className="font-mono text-gray-700 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                                        {user.last_login_ip || 'Not recorded'}
+                                    </p>
+                                </div>
+                            </div>
+                        </FormCard>
+
+                        {/* Effective Permissions Capabilities */}
+                        <FormCard
+                            title={`Effective Permissions (${uniquePermissions.length})`}
+                            description="Capabilities granted to this user through their assigned role(s)"
+                            icon={<Key className="w-5 h-5 text-emerald-600" />}
+                        >
+                            {uniquePermissions.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto pr-1">
+                                    {uniquePermissions.map((perm) => (
+                                        <span
+                                            key={perm.id}
+                                            className="px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                        >
+                                            {perm.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-gray-400 italic">No explicit permissions assigned.</p>
                             )}
-                        </div>
+                        </FormCard>
                     </div>
 
-                    {/* Account Status */}
-                    <div className="bg-white/80 backdrop-blur-xl rounded-xl shadow-lg border border-gray-200/50 p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-emerald-600" />
-                            Account Status
-                        </h3>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Status</label>
-                                <div className="mt-1">
-                                    <Badge
-                                        variant={user.status === 'active' ? 'success' : 'default'}
-                                        className="capitalize"
+                    {/* Right Column: Roles & Quick Actions */}
+                    <div className="space-y-5">
+                        {/* Assigned Roles Card */}
+                        <div className="bg-white rounded-xl border border-emerald-100 p-4 shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Shield className="w-4 h-4 text-emerald-600" />
+                                    Assigned Roles
+                                </h3>
+                                <span className="text-[11px] text-emerald-700 font-semibold">
+                                    {user.roles.length} role(s)
+                                </span>
+                            </div>
+
+                            <div className="space-y-2">
+                                {user.roles.map((role) => (
+                                    <div
+                                        key={role.id}
+                                        className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-100 flex items-center justify-between"
                                     >
-                                        {user.status}
-                                    </Badge>
-                                </div>
+                                        <div>
+                                            <span className="text-xs font-bold text-gray-900 block">{role.name}</span>
+                                            <span className="text-[10px] text-gray-500">
+                                                {role.permissions?.length || 0} permissions included
+                                            </span>
+                                        </div>
+                                        <Badge variant={getRoleBadgeVariant(role.name)} size="sm">
+                                            {role.name}
+                                        </Badge>
+                                    </div>
+                                ))}
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Account Created</label>
-                                <p className="text-gray-900 mt-1">
-                                    {new Date(user.created_at).toLocaleDateString('en-US', {
-                                        month: 'long',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </p>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Last Updated</label>
-                                <p className="text-gray-900 mt-1">
-                                    {new Date(user.updated_at).toLocaleDateString('en-US', {
-                                        month: 'long',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </p>
-                            </div>
+                        </div>
+
+                        {/* Quick Actions Card */}
+                        <div className="bg-white rounded-xl border border-emerald-100 p-4 shadow-2xs space-y-2.5">
+                            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+                                Account Actions
+                            </h3>
+                            <Link href={`/users/${user.id}/edit`} className="block">
+                                <Button variant="outline" size="sm" className="w-full justify-start text-xs">
+                                    <Edit className="w-3.5 h-3.5 mr-2" />
+                                    Modify User Info & Roles
+                                </Button>
+                            </Link>
+                            <Link href="/roles" className="block">
+                                <Button variant="outline" size="sm" className="w-full justify-start text-xs">
+                                    <Shield className="w-3.5 h-3.5 mr-2" />
+                                    Manage Role Definitions
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Delete Modal */}
+            <DeleteModal
+                isOpen={deleteOpen}
+                title="Delete User Account"
+                itemName={user.name}
+                onClose={() => setDeleteOpen(false)}
+                onConfirm={confirmDelete}
+            />
         </AuthenticatedLayout>
     );
 }

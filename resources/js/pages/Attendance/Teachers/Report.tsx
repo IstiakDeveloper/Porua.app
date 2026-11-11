@@ -5,6 +5,7 @@ import Button from '@/Components/Button';
 import ComboSelect from '@/Components/ComboSelect';
 import { AttendancePageHeader, type AttendancePersonType } from '@/Components/TeacherAttendanceNav';
 import { Download, FileText, Calendar, UserRound, Printer } from 'lucide-react';
+import { formatBdDate } from '@/utils/datetime';
 
 interface TeacherOption {
     id: number;
@@ -341,7 +342,7 @@ export default function Report({
 
                                             return (
                                                 <tr key={row.date} className="border-b border-slate-200/90 hover:bg-slate-50/80 transition-colors">
-                                                    <td className="px-3 py-2 text-xs font-semibold text-slate-800 font-mono">{row.date}</td>
+                                                    <td className="px-3 py-2 text-xs font-semibold text-slate-800 font-mono">{formatBdDate(row.date)}</td>
                                                     <td className="px-3 py-2 text-[11px] text-slate-500 font-medium">{row.day}</td>
                                                     <td className="px-3 py-2">
                                                         {meta ? (

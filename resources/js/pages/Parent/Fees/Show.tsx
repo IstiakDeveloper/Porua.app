@@ -1,27 +1,31 @@
+import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/Card';
-import Badge from '@/Components/Badge';
-import Button from '@/Components/Button';
+import ParentPage from '@/Components/Parent/ParentPage';
+import { formatTaka, formatWhen } from '@/Components/Parent/format';
+import { route } from '@/Components/Parent/route';
 import {
     ArrowLeft,
-    DollarSign,
+    Receipt,
     Calendar,
+    CheckCircle2,
+    AlertCircle,
+    Building2,
+    CreditCard,
     User,
+    Clock,
     FileText,
-    CheckCircle,
-    XCircle,
-    Clock
+    Printer
 } from 'lucide-react';
 
-interface FeeCollection {
+interface Fee {
     id: number;
     fee_type: string;
     student_name: string;
     amount: number;
     paid_amount: number;
     remaining: number;
-    due_date: string;
+    due_date: string | null;
     payment_date: string | null;
     status: string;
     is_overdue: boolean;
@@ -29,199 +33,122 @@ interface FeeCollection {
     receipt_number: string | null;
     collector_name: string;
     remarks: string | null;
-    created_at: string;
 }
 
-interface Props {
-    feeCollection: FeeCollection;
-}
-
-export default function Show({ feeCollection }: Props) {
-    const getStatusBadge = (status: string) => {
-        const variants = {
-            paid: 'bg-green-100 text-green-800',
-            partial: 'bg-yellow-100 text-yellow-800',
-            pending: 'bg-orange-100 text-orange-800',
-            overdue: 'bg-red-100 text-red-800',
-        };
-        return variants[status as keyof typeof variants] || 'bg-gray-100 text-gray-800';
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'paid':
-                return <CheckCircle className="h-6 w-6 text-green-600" />;
-            case 'partial':
-                return <Clock className="h-6 w-6 text-yellow-600" />;
-            case 'pending':
-                return <XCircle className="h-6 w-6 text-orange-600" />;
-            case 'overdue':
-                return <XCircle className="h-6 w-6 text-red-600" />;
-            default:
-                return null;
-        }
-    };
+export default function Show({ feeCollection }: { feeCollection: Fee }) {
+    const isOverdue = feeCollection.is_overdue || feeCollection.status === 'overdue';
+    const isPaid = feeCollection.status === 'paid' || feeCollection.remaining <= 0;
 
     return (
         <AuthenticatedLayout>
-            <Head title="Fee Details" />
+            <Head title={`Fee Invoice - ${feeCollection.fee_type}`} />
 
-            <div className="py-6">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <Link href={route('parent.fees.index')}>
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Fees
-                            </Button>
+            <ParentPage
+                title={feeCollection.fee_type}
+                subtitle={`Student: ${feeCollection.student_name}`}
+                action={
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={route('parent.fees.index')}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 transition-colors shadow-2xs"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            Back to Fees
                         </Link>
+                        {feeCollection.paid_amount > 0 && feeCollection.receipt_number && (
+                            <Link
+                                href={route('parent.fees.receipt', feeCollection.id)}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-xs"
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                Official Receipt Slip
+                            </Link>
+                        )}
                     </div>
-
-                    <Card className="mb-6">
-                        <CardHeader>
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-start gap-3">
-                                    {getStatusIcon(feeCollection.is_overdue ? 'overdue' : feeCollection.status)}
-                                    <div>
-                                        <CardTitle className="text-2xl mb-2">{feeCollection.fee_type}</CardTitle>
-                                        <Badge className={getStatusBadge(feeCollection.is_overdue ? 'overdue' : feeCollection.status)}>
-                                            {feeCollection.is_overdue ? 'OVERDUE' : feeCollection.status.toUpperCase()}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
-
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <p className="text-sm text-gray-600 mb-1">Student Name</p>
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-4 w-4 text-gray-400" />
-                                            <p className="font-semibold">{feeCollection.student_name}</p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-600 mb-1">Receipt Number</p>
-                                        <div className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-gray-400" />
-                                            <p className="font-semibold">{feeCollection.receipt_number || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-600 mb-1">Collected By</p>
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-4 w-4 text-gray-400" />
-                                            <p className="font-semibold">{feeCollection.collector_name}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <p className="text-sm text-gray-600 mb-1">Due Date</p>
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-gray-400" />
-                                            <p className="font-semibold">
-                                                {new Date(feeCollection.due_date).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-600 mb-1">Payment Date</p>
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-gray-400" />
-                                            <p className="font-semibold">
-                                                {feeCollection.payment_date
-                                                    ? new Date(feeCollection.payment_date).toLocaleDateString()
-                                                    : 'Not Paid'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {feeCollection.payment_method && (
-                                        <div>
-                                            <p className="text-sm text-gray-600 mb-1">Payment Method</p>
-                                            <div className="flex items-center gap-2">
-                                                <DollarSign className="h-4 w-4 text-gray-400" />
-                                                <p className="font-semibold">{feeCollection.payment_method}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <Card className="border-2">
-                                    <CardContent className="p-6 text-center">
-                                        <DollarSign className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                                        <p className="text-3xl font-bold">৳{feeCollection.amount.toFixed(2)}</p>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-2 border-green-200 bg-green-50">
-                                    <CardContent className="p-6 text-center">
-                                        <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600 mb-1">Paid Amount</p>
-                                        <p className="text-3xl font-bold text-green-600">
-                                            ৳{feeCollection.paid_amount.toFixed(2)}
-                                        </p>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className={`border-2 ${feeCollection.remaining > 0 ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'}`}>
-                                    <CardContent className="p-6 text-center">
-                                        {feeCollection.remaining > 0 ? (
-                                            <XCircle className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                                        ) : (
-                                            <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                                        )}
-                                        <p className="text-sm text-gray-600 mb-1">Remaining</p>
-                                        <p className={`text-3xl font-bold ${feeCollection.remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                                            ৳{feeCollection.remaining.toFixed(2)}
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {feeCollection.remarks && (
-                                <div className="border-t pt-6">
-                                    <h3 className="font-semibold mb-2">Remarks</h3>
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <p className="text-gray-700">{feeCollection.remarks}</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="border-t pt-6 mt-6">
-                                <p className="text-xs text-gray-500">
-                                    Record created on {new Date(feeCollection.created_at).toLocaleString()}
+                }
+            >
+                <div className="max-w-3xl mx-auto space-y-4">
+                    {/* 1. Primary Invoice Banner */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                    Current Remaining Balance
+                                </p>
+                                <p className={`text-3xl font-black mt-1 font-mono ${
+                                    isPaid ? 'text-emerald-700' : isOverdue ? 'text-rose-700' : 'text-slate-900'
+                                }`}>
+                                    {formatTaka(feeCollection.remaining)}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Total Bill: <span className="font-semibold text-slate-700">{formatTaka(feeCollection.amount)}</span> • Paid: <span className="font-semibold text-emerald-700">{formatTaka(feeCollection.paid_amount)}</span>
                                 </p>
                             </div>
-                        </CardContent>
-                    </Card>
 
-                    {feeCollection.remaining > 0 && (
-                        <Card className="border-yellow-200 bg-yellow-50">
-                            <CardContent className="p-6">
-                                <div className="flex items-start gap-3">
-                                    <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
-                                    <div>
-                                        <h3 className="font-semibold text-yellow-900 mb-1">Payment Pending</h3>
-                                        <p className="text-sm text-yellow-800">
-                                            Please contact the school office to make the payment for the remaining amount.
-                                            {feeCollection.is_overdue && (
-                                                <span className="font-semibold"> This fee is overdue!</span>
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
+                            <div className="shrink-0 self-start sm:self-auto">
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                                    isPaid
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                        : isOverdue
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200/80'
+                                }`}>
+                                    {isPaid ? (
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                    ) : (
+                                        <AlertCircle className="w-4 h-4" />
+                                    )}
+                                    {isPaid ? 'Fully Paid' : isOverdue ? 'Overdue Invoice' : 'Unpaid Dues'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. Structured Line Items Table */}
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs space-y-3">
+                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-1.5">
+                            <Receipt className="w-4 h-4 text-indigo-600" />
+                            Invoice & Collection Specifications
+                        </h3>
+
+                        <dl className="divide-y divide-slate-100 text-xs">
+                            <DetailRow label="Fee Category" value={feeCollection.fee_type} />
+                            <DetailRow label="Due Date" value={formatWhen(feeCollection.due_date)} />
+                            <DetailRow label="Payment Date" value={formatWhen(feeCollection.payment_date)} />
+                            <DetailRow label="Payment Method" value={feeCollection.payment_method || 'Office Counter / Cash'} />
+                            <DetailRow label="Official Receipt #" value={feeCollection.receipt_number || 'Pending generation'} isMono />
+                            <DetailRow label="Authorized Collector" value={feeCollection.collector_name || 'School Accounts Officer'} />
+                        </dl>
+
+                        {feeCollection.remarks && (
+                            <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-600">
+                                <span className="font-semibold text-slate-700 block mb-0.5">Administrative Remarks:</span>
+                                {feeCollection.remarks}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 3. Office Payment Note */}
+                    <div className="bg-slate-50 rounded-xl border border-slate-200/70 p-4 text-xs space-y-1 text-slate-600">
+                        <div className="flex items-center gap-2 font-bold text-slate-800">
+                            <Building2 className="w-4 h-4 text-indigo-600" />
+                            Counter Clearance Notice
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                            To pay this invoice or obtain a stamped physical receipt, please visit the accounts section during normal school office hours.
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </ParentPage>
         </AuthenticatedLayout>
+    );
+}
+
+function DetailRow({ label, value, isMono = false }: { label: string; value: string; isMono?: boolean }) {
+    return (
+        <div className="flex items-center justify-between py-2.5">
+            <dt className="text-slate-500 font-medium">{label}</dt>
+            <dd className={`font-semibold text-slate-900 ${isMono ? 'font-mono' : ''}`}>{value}</dd>
+        </div>
     );
 }

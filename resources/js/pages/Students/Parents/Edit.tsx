@@ -1,8 +1,19 @@
-import React, { useState, FormEventHandler } from 'react';
+import React, { FormEventHandler } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Button from '@/Components/Button';
-import { ArrowLeft, Save, Mail, Phone, MapPin, User, Briefcase, Users } from 'lucide-react';
+import FormPageHeader from '@/Components/FormPageHeader';
+import FormCard from '@/Components/FormCard';
+import {
+    Save,
+    Mail,
+    Phone,
+    MapPin,
+    User,
+    Briefcase,
+    Users,
+    Shield
+} from 'lucide-react';
 
 interface Student {
     id: number;
@@ -36,6 +47,7 @@ interface Parent {
         name: string;
         email: string;
         phone: string;
+        username?: string | null;
     };
     students: Student[];
 }
@@ -48,8 +60,11 @@ interface EditProps {
 export default function Edit({ parent, students }: EditProps) {
     const { data, setData, put, processing, errors } = useForm({
         name: parent.user?.name || '',
+        username: parent.user?.username || '',
         email: parent.user?.email || '',
         phone: parent.user?.phone || '',
+        password: '',
+        password_confirmation: '',
         father_name: parent.father_name || '',
         father_phone: parent.father_phone || '',
         father_occupation: parent.father_occupation || '',
@@ -78,325 +93,303 @@ export default function Edit({ parent, students }: EditProps) {
 
     return (
         <AuthenticatedLayout>
-            <Head title="Edit Parent" />
+            <Head title={`Edit Parent - ${parent.user?.name || 'Record'}`} />
 
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 py-8">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header */}
-                    <div className="mb-8">
-                        <Link
-                            href="/student-parents"
-                            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Back to Parents
-                        </Link>
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg">
-                                <Save className="w-8 h-8 text-white" />
-                            </div>
+            <div className="space-y-4 max-w-5xl">
+                {/* Standard Admin Header */}
+                <FormPageHeader
+                    title="Edit Parent Account"
+                    subtitle="Update contact details, login credentials, and linked children"
+                    backUrl="/student-parents"
+                    backLabel="Parents"
+                    badgeText={parent.user?.name || 'Parent Record'}
+                />
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Account Information Card */}
+                    <FormCard
+                        title="Account & Portal Login"
+                        description="Credentials used by the parent to log in to the portal"
+                        icon={<Shield className="w-4 h-4 text-emerald-600" />}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-900">Edit Parent</h1>
-                                <p className="text-gray-600 mt-1">Update parent information and student links</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Account Information */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                    <User className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <h2 className="text-xl font-semibold text-gray-900">Account Information</h2>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Full Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.name}
-                                        onChange={e => setData('name', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="Enter full name"
-                                    />
-                                    {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Email <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="email"
-                                            value={data.email}
-                                            onChange={e => setData('email', e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                            placeholder="parent@example.com"
-                                        />
-                                    </div>
-                                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Phone <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={data.phone}
-                                            onChange={e => setData('phone', e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                            placeholder="+880 1XXX-XXXXXX"
-                                        />
-                                    </div>
-                                    {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Father Information */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                                    <User className="w-5 h-5 text-indigo-600" />
-                                </div>
-                                <h2 className="text-xl font-semibold text-gray-900">Father Information</h2>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Father's Name</label>
-                                    <input
-                                        type="text"
-                                        value={data.father_name}
-                                        onChange={e => setData('father_name', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="Enter father's name"
-                                    />
-                                    {errors.father_name && <p className="mt-1 text-sm text-red-600">{errors.father_name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Father's Phone</label>
-                                    <input
-                                        type="text"
-                                        value={data.father_phone}
-                                        onChange={e => setData('father_phone', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="+880 1XXX-XXXXXX"
-                                    />
-                                    {errors.father_phone && <p className="mt-1 text-sm text-red-600">{errors.father_phone}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Father's Occupation</label>
-                                    <div className="relative">
-                                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={data.father_occupation}
-                                            onChange={e => setData('father_occupation', e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                            placeholder="e.g., Engineer"
-                                        />
-                                    </div>
-                                    {errors.father_occupation && <p className="mt-1 text-sm text-red-600">{errors.father_occupation}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Mother Information */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                                    <User className="w-5 h-5 text-pink-600" />
-                                </div>
-                                <h2 className="text-xl font-semibold text-gray-900">Mother Information</h2>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Mother's Name</label>
-                                    <input
-                                        type="text"
-                                        value={data.mother_name}
-                                        onChange={e => setData('mother_name', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="Enter mother's name"
-                                    />
-                                    {errors.mother_name && <p className="mt-1 text-sm text-red-600">{errors.mother_name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Mother's Phone</label>
-                                    <input
-                                        type="text"
-                                        value={data.mother_phone}
-                                        onChange={e => setData('mother_phone', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="+880 1XXX-XXXXXX"
-                                    />
-                                    {errors.mother_phone && <p className="mt-1 text-sm text-red-600">{errors.mother_phone}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Mother's Occupation</label>
-                                    <div className="relative">
-                                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={data.mother_occupation}
-                                            onChange={e => setData('mother_occupation', e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                            placeholder="e.g., Teacher"
-                                        />
-                                    </div>
-                                    {errors.mother_occupation && <p className="mt-1 text-sm text-red-600">{errors.mother_occupation}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Guardian Information */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                    <User className="w-5 h-5 text-purple-600" />
-                                </div>
-                                <h2 className="text-xl font-semibold text-gray-900">Guardian Information (Optional)</h2>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Guardian Name</label>
-                                    <input
-                                        type="text"
-                                        value={data.guardian_name}
-                                        onChange={e => setData('guardian_name', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="Enter guardian name"
-                                    />
-                                    {errors.guardian_name && <p className="mt-1 text-sm text-red-600">{errors.guardian_name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Guardian Phone</label>
-                                    <input
-                                        type="text"
-                                        value={data.guardian_phone}
-                                        onChange={e => setData('guardian_phone', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="+880 1XXX-XXXXXX"
-                                    />
-                                    {errors.guardian_phone && <p className="mt-1 text-sm text-red-600">{errors.guardian_phone}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Relation</label>
-                                    <input
-                                        type="text"
-                                        value={data.guardian_relation}
-                                        onChange={e => setData('guardian_relation', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="e.g., Uncle, Aunt"
-                                    />
-                                    {errors.guardian_relation && <p className="mt-1 text-sm text-red-600">{errors.guardian_relation}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Address */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                                    <MapPin className="w-5 h-5 text-green-600" />
-                                </div>
-                                <h2 className="text-xl font-semibold text-gray-900">Address</h2>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">
+                                    Parent Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={data.name}
+                                    onChange={e => setData('name', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Full name"
+                                />
+                                {errors.name && <p className="mt-1 text-[11px] text-red-600">{errors.name}</p>}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Full Address</label>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">
+                                    Username (Universal Login)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={data.username}
+                                    onChange={e => setData('username', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Username or Phone"
+                                />
+                                {errors.username && <p className="mt-1 text-[11px] text-red-600">{errors.username}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">
+                                    Phone Number <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={data.phone}
+                                    onChange={e => setData('phone', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="01XXXXXXXXX"
+                                />
+                                {errors.phone && <p className="mt-1 text-[11px] text-red-600">{errors.phone}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">
+                                    Email Address <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    required
+                                    value={data.email}
+                                    onChange={e => setData('email', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="parent@example.com"
+                                />
+                                {errors.email && <p className="mt-1 text-[11px] text-red-600">{errors.email}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">
+                                    Reset Password / PIN <span className="text-slate-400 font-normal">(Leave blank to keep unchanged)</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    value={data.password}
+                                    onChange={e => setData('password', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="New 4-digit PIN"
+                                />
+                                {errors.password && <p className="mt-1 text-[11px] text-red-600">{errors.password}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">
+                                    Confirm New Password / PIN
+                                </label>
+                                <input
+                                    type="password"
+                                    value={data.password_confirmation}
+                                    onChange={e => setData('password_confirmation', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Confirm new PIN"
+                                />
+                            </div>
+                        </div>
+                    </FormCard>
+
+                    {/* Father Information Card */}
+                    <FormCard
+                        title="Father Information"
+                        description="Father's records for school documentation"
+                        icon={<User className="w-4 h-4 text-slate-600" />}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Father's Name</label>
+                                <input
+                                    type="text"
+                                    value={data.father_name}
+                                    onChange={e => setData('father_name', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Full name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Father's Phone</label>
+                                <input
+                                    type="text"
+                                    value={data.father_phone}
+                                    onChange={e => setData('father_phone', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="01XXXXXXXXX"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Father's Occupation</label>
+                                <input
+                                    type="text"
+                                    value={data.father_occupation}
+                                    onChange={e => setData('father_occupation', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Occupation"
+                                />
+                            </div>
+                        </div>
+                    </FormCard>
+
+                    {/* Mother Information Card */}
+                    <FormCard
+                        title="Mother Information"
+                        description="Mother's records for school documentation"
+                        icon={<User className="w-4 h-4 text-slate-600" />}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Mother's Name</label>
+                                <input
+                                    type="text"
+                                    value={data.mother_name}
+                                    onChange={e => setData('mother_name', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Full name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Mother's Phone</label>
+                                <input
+                                    type="text"
+                                    value={data.mother_phone}
+                                    onChange={e => setData('mother_phone', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="01XXXXXXXXX"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Mother's Occupation</label>
+                                <input
+                                    type="text"
+                                    value={data.mother_occupation}
+                                    onChange={e => setData('mother_occupation', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Occupation"
+                                />
+                            </div>
+                        </div>
+                    </FormCard>
+
+                    {/* Legal Guardian Information Card */}
+                    <FormCard
+                        title="Legal Guardian Information"
+                        description="If student is under legal guardianship"
+                        icon={<Users className="w-4 h-4 text-slate-600" />}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Guardian Name</label>
+                                <input
+                                    type="text"
+                                    value={data.guardian_name}
+                                    onChange={e => setData('guardian_name', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Guardian name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Guardian Phone</label>
+                                <input
+                                    type="text"
+                                    value={data.guardian_phone}
+                                    onChange={e => setData('guardian_phone', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="01XXXXXXXXX"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Relationship</label>
+                                <input
+                                    type="text"
+                                    value={data.guardian_relation}
+                                    onChange={e => setData('guardian_relation', e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Relationship"
+                                />
+                            </div>
+                            <div className="md:col-span-3">
+                                <label className="block text-xs font-medium text-slate-700 mb-1">Address</label>
                                 <textarea
+                                    rows={2}
                                     value={data.address}
                                     onChange={e => setData('address', e.target.value)}
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                    placeholder="Enter complete address"
+                                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 bg-white"
+                                    placeholder="Address line"
                                 />
-                                {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
                             </div>
                         </div>
+                    </FormCard>
 
-                        {/* Link Students */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                                    <Users className="w-5 h-5 text-orange-600" />
-                                </div>
-                                <div className="flex-1">
-                                    <h2 className="text-xl font-semibold text-gray-900">Link Students</h2>
-                                    <p className="text-sm text-gray-600 mt-1">Select students to link with this parent (Hold Ctrl for multiple)</p>
-                                </div>
-                                <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                                    {data.student_ids.length} selected
-                                </div>
-                            </div>
-
-                            <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-                                <div className="divide-y divide-gray-200">
-                                    {students.map((student) => (
-                                        <label
-                                            key={student.id}
-                                            className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                                data.student_ids.includes(student.id) ? 'bg-blue-50' : ''
-                                            }`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={data.student_ids.includes(student.id)}
-                                                onChange={() => handleStudentToggle(student.id)}
-                                                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center text-white font-semibold">
-                                                {student.first_name.charAt(0)}{student.last_name.charAt(0)}
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900">
-                                                    {student.first_name} {student.last_name}
-                                                </p>
-                                                <p className="text-sm text-gray-500">
-                                                    {student.admission_number} • {student.school_class?.name} {student.section?.name}
-                                                </p>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                            {errors.student_ids && <p className="mt-2 text-sm text-red-600">{errors.student_ids}</p>}
+                    {/* Link Students Card */}
+                    <FormCard
+                        title="Linked Students"
+                        description="Select all students that belong to this parent account"
+                        icon={<Users className="w-4 h-4 text-emerald-600" />}
+                        action={
+                            <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                                {data.student_ids.length} Linked
+                            </span>
+                        }
+                    >
+                        <div className="max-h-64 overflow-y-auto border border-slate-200/80 rounded-xl divide-y divide-slate-100">
+                            {students.map((student) => (
+                                <label
+                                    key={student.id}
+                                    className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors ${
+                                        data.student_ids.includes(student.id) ? 'bg-indigo-50/40' : ''
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={data.student_ids.includes(student.id)}
+                                        onChange={() => handleStudentToggle(student.id)}
+                                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                    />
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                        {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-slate-900 truncate">
+                                            {student.first_name} {student.last_name}
+                                        </p>
+                                        <p className="text-[11px] text-slate-400 truncate">
+                                            {student.admission_number} • {student.school_class?.name} {student.section?.name}
+                                        </p>
+                                    </div>
+                                </label>
+                            ))}
                         </div>
+                        {errors.student_ids && <p className="mt-1 text-[11px] text-red-600">{errors.student_ids}</p>}
+                    </FormCard>
 
-                        {/* Submit Buttons */}
-                        <div className="flex items-center justify-end gap-4">
-                            <Link
-                                href="/student-parents"
-                                className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                            >
+                    {/* Submit Actions */}
+                    <div className="flex items-center justify-end gap-2.5 pt-2">
+                        <Link href="/student-parents">
+                            <Button variant="ghost" size="sm" type="button">
                                 Cancel
-                            </Link>
-                            <Button type="submit" disabled={processing} className="px-6 py-2.5">
-                                {processing ? 'Updating...' : 'Update Parent'}
                             </Button>
-                        </div>
-                    </form>
-                </div>
+                        </Link>
+                        <Button
+                            type="submit"
+                            size="sm"
+                            disabled={processing}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                            {processing ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                </form>
             </div>
         </AuthenticatedLayout>
     );

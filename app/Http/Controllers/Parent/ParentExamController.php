@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Parent;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudentParent;
-use App\Models\Student;
-use App\Models\Result;
-use App\Models\Mark;
 use App\Models\ExamSchedule;
+use App\Models\Mark;
+use App\Models\Result;
+use App\Support\ParentPortal;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,31 +15,18 @@ class ParentExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
-
+        $parent = ParentPortal::parent($user);
         $studentId = $request->input('student_id');
+        $children = ParentPortal::children($parent);
 
-        $children = Student::where('parent_id', $parent->id)
-            ->orWhereHas('parents', fn($q) => $q->where('student_parents.id', $parent->id))
-            ->with(['schoolClass', 'section'])
-            ->get();
-
-        if (!$studentId) {
+        if (! $studentId) {
             $student = $children->first();
             $studentId = $student?->id;
         } else {
             $student = $children->firstWhere('id', (int) $studentId);
         }
 
-        if (!$student) {
+        if (! $student) {
             return Inertia::render('Parent/Exams/Index', [
                 'student' => null,
                 'children' => [],
@@ -60,7 +46,7 @@ class ParentExamController extends Controller
             ->map(function ($schedule) {
                 return [
                     'id' => $schedule->id,
-                    'name' => ($schedule->exam->name ?? 'Exam') . ' - ' . ($schedule->subject->name ?? ''),
+                    'name' => ($schedule->exam->name ?? 'Exam').' - '.($schedule->subject->name ?? ''),
                     'exam_date' => $schedule->exam_date ? $schedule->exam_date->format('Y-m-d') : '',
                     'start_time' => $schedule->start_time ?? '',
                     'end_time' => $schedule->end_time ?? '',
@@ -100,10 +86,7 @@ class ParentExamController extends Controller
                 'class_name' => $student->schoolClass->name ?? 'N/A',
                 'section_name' => $student->section->name ?? 'N/A',
             ],
-            'children' => $children->map(fn($c) => [
-                'id' => $c->id,
-                'full_name' => $c->full_name,
-            ]),
+            'children' => $children->map(fn ($c) => ParentPortal::childOption($c))->values(),
             'upcomingExams' => $upcomingExams,
             'results' => $results,
         ]);
@@ -112,29 +95,17 @@ class ParentExamController extends Controller
     public function resultDetail(Request $request, $id)
     {
         $user = $request->user();
-        $parent = StudentParent::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'father_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'status' => 'active',
-            ]
-        );
+        $parent = ParentPortal::parent($user);
 
         $result = Result::with(['exam', 'student.schoolClass', 'student.section', 'student.parents'])
             ->findOrFail($id);
 
-        // Verify parent has access to this student
-        $isParentChild = ($result->student->parent_id === $parent->id)
-            || $result->student->parents->contains('id', $parent->id);
-
-        if (!$isParentChild) {
+        if (! ParentPortal::children($parent)->contains('id', $result->student_id)) {
             abort(403, 'Unauthorized access.');
         }
 
         // Only allow viewing published results
-        if (!$result->is_published) {
+        if (! $result->is_published) {
             abort(403, 'This exam result has not been published yet.');
         }
 
