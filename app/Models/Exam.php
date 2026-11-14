@@ -14,12 +14,16 @@ class Exam extends Model
         'academic_year_id',
         'name',
         'exam_type',
+        'exam_kind',
+        'term_number',
         'start_date',
         'end_date',
         'result_publish_date',
         'description',
         'status',
         'is_published',
+        'marks_locked',
+        'min_attendance_percent',
         'published_at',
     ];
 
@@ -30,8 +34,36 @@ class Exam extends Model
             'end_date' => 'date',
             'result_publish_date' => 'date',
             'is_published' => 'boolean',
+            'marks_locked' => 'boolean',
+            'min_attendance_percent' => 'integer',
+            'term_number' => 'integer',
             'published_at' => 'datetime',
         ];
+    }
+
+    public function isClassTest(): bool
+    {
+        return $this->exam_kind === 'class_test';
+    }
+
+    public function isAnnual(): bool
+    {
+        return $this->exam_kind === 'annual';
+    }
+
+    public function kindLabel(): string
+    {
+        if ($this->exam_kind === 'annual') {
+            return 'Annual';
+        }
+        if ($this->exam_kind === 'class_test') {
+            return 'Class Test';
+        }
+        if ($this->exam_kind === 'semester' && $this->term_number) {
+            return 'Semester '.$this->term_number;
+        }
+
+        return ucfirst(str_replace('_', ' ', (string) $this->exam_type));
     }
 
     public function academicYear()

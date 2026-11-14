@@ -25,12 +25,11 @@ interface EditProps {
 }
 
 const EXAM_TYPE_PRESETS = [
-    { label: 'First Term', type: 'first_term', nameSuffix: 'First Term Examination' },
-    { label: 'Mid Term / Half Yearly', type: 'mid_term', nameSuffix: 'Half Yearly Examination' },
-    { label: 'Annual / Final', type: 'final', nameSuffix: 'Annual Examination' },
-    { label: 'Model Test', type: 'test', nameSuffix: 'Pre-Test / Model Test' },
-    { label: 'Class Test 1', type: 'test', nameSuffix: 'Class Assessment Test 1' },
-    { label: 'Practical Lab Exam', type: 'practical', nameSuffix: 'Practical Laboratory Examination' },
+    { label: 'Semester 1', type: 'first_term', kind: 'semester', term: 1, nameSuffix: 'Semester 1 Examination' },
+    { label: 'Semester 2', type: 'mid_term', kind: 'semester', term: 2, nameSuffix: 'Semester 2 Examination' },
+    { label: 'Annual', type: 'final', kind: 'annual', term: null, nameSuffix: 'Annual Examination' },
+    { label: 'Class Test', type: 'test', kind: 'class_test', term: null, nameSuffix: 'Class Test' },
+    { label: 'Practical', type: 'practical', kind: 'semester', term: null, nameSuffix: 'Practical Examination' },
 ];
 
 export default function Edit({ exam, academicYears, classes }: EditProps) {
@@ -38,6 +37,9 @@ export default function Edit({ exam, academicYears, classes }: EditProps) {
         academic_year_id: exam.academic_year_id.toString(),
         name: exam.name,
         exam_type: exam.exam_type,
+        exam_kind: exam.exam_kind || 'semester',
+        term_number: exam.term_number ?? null,
+        min_attendance_percent: exam.min_attendance_percent ? String(exam.min_attendance_percent) : '',
         start_date: exam.start_date || '',
         end_date: exam.end_date || '',
         result_publish_date: exam.result_publish_date || '',
@@ -149,6 +151,9 @@ export default function Edit({ exam, academicYears, classes }: EditProps) {
                                         setFormData((prev) => ({
                                             ...prev,
                                             exam_type: p.type,
+                                            exam_kind: p.kind,
+                                            term_number: p.term,
+                                            min_attendance_percent: p.kind === 'annual' ? (prev.min_attendance_percent || '75') : '',
                                         })),
                                 }))}
                             />
@@ -184,20 +189,43 @@ export default function Edit({ exam, academicYears, classes }: EditProps) {
                                     </label>
                                     <select
                                         value={formData.exam_type}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, exam_type: e.target.value })
-                                        }
+                                        onChange={(e) => {
+                                            const preset = EXAM_TYPE_PRESETS.find((item) => item.type === e.target.value);
+                                            setFormData({
+                                                ...formData,
+                                                exam_type: e.target.value,
+                                                exam_kind: preset?.kind || 'semester',
+                                                term_number: preset?.term ?? null,
+                                                min_attendance_percent: preset?.kind === 'annual' ? (formData.min_attendance_percent || '75') : '',
+                                            });
+                                        }}
                                         required
                                         className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-900"
                                     >
-                                        <option value="first_term">First Term Examination</option>
-                                        <option value="mid_term">Mid Term / Half Yearly Examination</option>
-                                        <option value="final">Annual / Final Examination</option>
-                                        <option value="test">Class Test / Quiz</option>
-                                        <option value="practical">Practical Laboratory Exam</option>
+                                        <option value="first_term">Semester 1</option>
+                                        <option value="mid_term">Semester 2</option>
+                                        <option value="final">Annual</option>
+                                        <option value="test">Class Test</option>
+                                        <option value="practical">Practical</option>
                                     </select>
                                 </div>
                             </div>
+
+                            {formData.exam_kind === 'annual' && (
+                                <div className="max-w-xs">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Minimum attendance %
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        value={formData.min_attendance_percent}
+                                        onChange={(e) => setFormData({ ...formData, min_attendance_percent: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-200 rounded-xl"
+                                    />
+                                </div>
+                            )}
 
                             <div>
                                 <div className="flex items-center justify-between mb-1">

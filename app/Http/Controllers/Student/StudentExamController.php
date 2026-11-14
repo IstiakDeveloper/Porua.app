@@ -12,6 +12,8 @@ use App\Models\ExamSchedule;
 use App\Models\Result;
 use App\Models\Mark;
 use App\Models\ExamSeatPlan;
+use App\Models\MarkRecheck;
+use App\Services\ExamYearSheetService;
 
 class StudentExamController extends Controller
 {
@@ -121,6 +123,11 @@ class StudentExamController extends Controller
             ->with('examHall')
             ->first();
 
+        $sheet = app(ExamYearSheetService::class);
+        $attendance = $exam->isAnnual()
+            ? $sheet->forStudent($student)['attendance']
+            : null;
+
         return Inertia::render('Student/Exams/Show', [
             'student' => [
                 'id' => $student->id,
@@ -130,10 +137,12 @@ class StudentExamController extends Controller
             'exam' => [
                 'id' => $exam->id,
                 'name' => $exam->name,
+                'exam_kind' => $exam->exam_kind,
                 'exam_date' => $exam->start_date?->format('d M Y'),
                 'total_marks' => 0,
                 'passing_marks' => 0,
                 'academic_year' => $exam->academicYear->name ?? 'N/A',
+                'attendance' => $attendance,
             ],
             'schedules' => $schedules,
             'seatPlan' => $seatPlan ? [
@@ -152,6 +161,7 @@ class StudentExamController extends Controller
         $results = Result::with(['exam', 'schoolClass'])
             ->where('student_id', $student->id)
             ->where('is_published', true)
+            ->whereHas('exam', fn ($q) => $q->where('exam_kind', '!=', 'class_test'))
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function($result) {
@@ -159,6 +169,7 @@ class StudentExamController extends Controller
                     'id' => $result->id,
                     'exam_id' => $result->exam_id,
                     'exam_name' => $result->exam->name ?? 'N/A',
+                    'exam_kind' => $result->exam->exam_kind ?? null,
                     'exam_date' => $result->exam->start_date?->format('d M Y'),
                     'total_marks' => $result->total_marks,
                     'obtained_marks' => $result->obtained_marks,
@@ -203,6 +214,7 @@ class StudentExamController extends Controller
             ->map(function($mark) {
                 return [
                     'id' => $mark->id,
+                    'subject_id' => $mark->subject_id,
                     'subject_name' => $mark->subject->name ?? 'N/A',
                     'theory_marks' => $mark->theory_marks,
                     'practical_marks' => $mark->practical_marks,
@@ -226,6 +238,7 @@ class StudentExamController extends Controller
             ],
             'result' => [
                 'id' => $result->id,
+                'exam_id' => $result->exam_id,
                 'exam_name' => $result->exam->name ?? 'N/A',
                 'exam_date' => $result->exam->start_date?->format('d M Y'),
                 'total_marks' => $result->total_marks,
@@ -239,7 +252,43 @@ class StudentExamController extends Controller
                 'remarks' => $result->remarks,
             ],
             'marks' => $marks,
+            'pending_subject_ids' => MarkRecheck::query()
+                ->where('exam_id', $result->exam_id)
+                ->where('student_id', $student->id)
+                ->where('status', 'pending')
+                ->pluck('subject_id'),
         ]);
+    }
+
+    public function yearSheet()
+    {
+        $student = Student::where('user_id', Auth::id())->firstOrFail();
+
+        return Inertia::render('Exams/YearSheet', [
+            'backUrl' => '/student/results',
+            'recheckUrl' => null,
+            'student' => [
+                'full_name' => $student->full_name,
+                'class_name' => $student->schoolClass->name ?? 'N/A',
+                'section_name' => $student->section->name ?? 'N/A',
+                'roll_number' => $student->roll_number,
+            ],
+            'sheet' => app(ExamYearSheetService::class)->forStudent($student),
+        ]);
+    }
+
+    public function storeRecheck(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+        $validated = $request->validate([
+            'exam_id' => ['required', 'exists:exams,id'],
+            'subject_id' => ['required', 'exists:subjects,id'],
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+
+        MarkRecheck::open($student, $request->user()->id, (int) $validated['exam_id'], (int) $validated['subject_id'], $validated['reason']);
+
+        return back()->with('success', 'Recheck requested. The school will review it.');
     }
 
     public function downloadMarksheet($resultId)

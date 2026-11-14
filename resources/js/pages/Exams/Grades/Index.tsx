@@ -205,14 +205,23 @@ export default function Index({ grades = [] }: IndexProps) {
                             Configure grading scales, mark intervals, GPA conversions, and qualitative remarks
                         </p>
                     </div>
-                    <Button
-                        size="md"
-                        onClick={handleOpenCreate}
-                        icon={<Plus className="w-4 h-4" />}
-                        className="bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20"
-                    >
-                        Add Grade Interval
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="md"
+                            variant="outline"
+                            onClick={() => router.post('/grade-settings/install')}
+                        >
+                            Install national scale
+                        </Button>
+                        <Button
+                            size="md"
+                            onClick={handleOpenCreate}
+                            icon={<Plus className="w-4 h-4" />}
+                            className="bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20"
+                        >
+                            Add Grade Interval
+                        </Button>
+                    </div>
                 </div>
 
                 {/* KPI Metrics */}

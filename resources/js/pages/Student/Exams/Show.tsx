@@ -27,6 +27,7 @@ interface Exam {
     total_marks: number;
     passing_marks: number;
     academic_year: string;
+    attendance?: { percent: number | null; minimum: number | null; eligible: boolean | null } | null;
 }
 
 interface Schedule {
@@ -69,6 +70,12 @@ export default function Show({ student, exam, schedules = [], seatPlan }: Props)
                         { label: `Passing: ${exam.passing_marks}/${exam.total_marks}`, variant: 'neutral' }
                     ]}
                 />
+
+                {exam.attendance?.eligible === false && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                        Attendance is {exam.attendance.percent}% and the annual exam needs {exam.attendance.minimum}%. This student is not eligible to pass the annual exam.
+                    </div>
+                )}
 
                 {/* 2. SEAT PLAN CARD IF AVAILABLE */}
                 {seatPlan && (

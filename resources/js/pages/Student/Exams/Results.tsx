@@ -75,6 +75,11 @@ export default function Results({ student, results = [] }: Props) {
                     title="My Academic Results"
                     subtitle={`${student.full_name} • Class ${student.class_name} (${student.section_name}) • Roll #${student.roll_number}`}
                     backUrl="/student/exams"
+                    actions={
+                        <Link href="/student/year-sheet" className="text-xs font-semibold text-indigo-700">
+                            Year sheet
+                        </Link>
+                    }
                     badges={[
                         { label: `${results.length} Terms Published`, variant: 'neutral' },
                         { label: `GPA ${averageGPA} Overall`, variant: Number(averageGPA) >= 3.5 ? 'success' : 'neutral' }

@@ -25,6 +25,22 @@ class ResultCalculationService
         $exam = Exam::findOrFail($examId);
         $schoolClass = SchoolClass::findOrFail($classId);
 
+        $unverified = Mark::where('exam_id', $examId)
+            ->where('class_id', $classId)
+            ->whereNull('verified_by')
+            ->count();
+
+        if ($unverified > 0) {
+            return [
+                'success' => false,
+                'message' => $unverified.' mark rows are still unverified. Verify marks, then generate results.',
+                'count' => 0,
+            ];
+        }
+
+        $attendance = app(ExamYearSheetService::class);
+        $minimumAttendance = $exam->isAnnual() ? (int) ($exam->min_attendance_percent ?? 75) : null;
+
         // Fetch all active students in the class
         $students = Student::where('class_id', $classId)
             ->where('status', 'active')
@@ -47,7 +63,7 @@ class ResultCalculationService
             ->keyBy('subject_id');
 
         // Fetch all grade settings ordered by min_marks desc
-        $gradeSettings = GradeSetting::orderBy('min_marks', 'desc')->get();
+        $gradeSettings = GradeSetting::scaleForYear($exam->academic_year_id ? (int) $exam->academic_year_id : null);
 
         $compiledStudents = [];
 
@@ -141,6 +157,16 @@ class ResultCalculationService
                 $gpa = round($totalGradePoints / $evaluatedCount, 2);
                 $finalGrade = $this->getGradeForGpa($gpa);
                 $remarks = $this->getRemarksForGpa($gpa);
+            }
+
+            if ($minimumAttendance !== null && $exam->academic_year_id) {
+                $percent = $attendance->attendancePercent($student->id, (int) $exam->academic_year_id);
+                if ($percent !== null && $percent < $minimumAttendance) {
+                    $status = 'fail';
+                    $gpa = 0.00;
+                    $finalGrade = 'F';
+                    $remarks = 'Attendance '.$percent.'% is below the '.$minimumAttendance.'% annual requirement';
+                }
             }
 
             $compiledStudents[] = [

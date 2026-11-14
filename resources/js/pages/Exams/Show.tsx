@@ -13,12 +13,19 @@ interface ShowProps {
 }
 
 const typeLabels: Record<string, string> = {
-    first_term: 'First Term',
-    mid_term: 'Mid Term',
-    final: 'Annual / Final',
+    first_term: 'Semester 1',
+    mid_term: 'Semester 2',
+    final: 'Annual',
     test: 'Class Test',
     practical: 'Practical',
 };
+
+function kindLabel(exam: Exam) {
+    if (exam.exam_kind === 'annual') return 'Annual';
+    if (exam.exam_kind === 'class_test') return 'Class Test';
+    if (exam.exam_kind === 'semester' && exam.term_number) return `Semester ${exam.term_number}`;
+    return typeLabels[exam.exam_type] || exam.exam_type;
+}
 
 function statusClass(status: string) {
     if (status === 'upcoming') return 'bg-blue-50 text-blue-700 border-blue-100';
@@ -45,7 +52,8 @@ export default function Show({ exam }: ShowProps) {
                             {exam.name}
                         </h1>
                         <p className="text-sm text-slate-500 mt-0.5">
-                            {yearName || 'Academic year not set'} · {typeLabels[exam.exam_type] || exam.exam_type}
+                            {yearName || 'Academic year not set'} · {kindLabel(exam)}
+                            {exam.exam_kind === 'annual' && exam.min_attendance_percent ? ` · Attendance ${exam.min_attendance_percent}%` : ''}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">

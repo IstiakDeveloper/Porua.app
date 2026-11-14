@@ -9,6 +9,7 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\FeeCollection;
 use App\Models\FeeStructure;
+use App\Services\ExamPlanService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ use Inertia\Inertia;
 
 class ExamController extends Controller
 {
+    public function __construct(private ExamPlanService $plans) {}
+
     public function index(Request $request)
     {
         $this->authorize('manage_exams');
@@ -50,7 +53,10 @@ class ExamController extends Controller
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
             'name' => 'required|string|max:255',
-            'exam_type' => 'required|in:first_term,mid_term,final,test,practical',
+            'exam_type' => 'nullable|in:first_term,mid_term,final,test,practical',
+            'exam_kind' => 'nullable|in:class_test,semester,annual',
+            'term_number' => 'nullable|integer|in:1,2',
+            'min_attendance_percent' => 'nullable|integer|min:0|max:100',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'result_publish_date' => 'nullable|date|after_or_equal:end_date',
@@ -60,6 +66,14 @@ class ExamController extends Controller
             'classes.*' => 'exists:classes,id',
         ]);
 
+        $validated = array_merge($validated, $this->plans->normalize($validated));
+        $this->plans->assertSlotAvailable(
+            (int) $validated['academic_year_id'],
+            $validated['classes'] ?? [],
+            $validated['exam_kind'],
+            $validated['term_number']
+        );
+
         DB::beginTransaction();
         try {
             $exam = Exam::create($validated);
@@ -67,16 +81,21 @@ class ExamController extends Controller
             if (!empty($validated['classes'])) {
                 $exam->classes()->sync($validated['classes']);
 
-                // Auto-generate exam fees for all students in selected classes
-                $this->generateExamFeesForStudents($exam, $validated['classes'], $validated['academic_year_id']);
+                if ($validated['exam_kind'] !== 'class_test') {
+                    $this->generateExamFeesForStudents($exam, $validated['classes'], $validated['academic_year_id']);
+                }
             }
 
             DB::commit();
 
             logActivity('create', "Created exam: {$exam->name}", Exam::class, $exam->id);
 
+            $message = $validated['exam_kind'] === 'class_test'
+                ? 'Class test created. Exam fees were not generated.'
+                : 'Exam created successfully and fees generated for students';
+
             return redirect()->route('exams.index')
-                ->with('success', 'Exam created successfully and fees generated for students');
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -116,7 +135,10 @@ class ExamController extends Controller
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
             'name' => 'required|string|max:255',
-            'exam_type' => 'required|in:first_term,mid_term,final,test,practical',
+            'exam_type' => 'nullable|in:first_term,mid_term,final,test,practical',
+            'exam_kind' => 'nullable|in:class_test,semester,annual',
+            'term_number' => 'nullable|integer|in:1,2',
+            'min_attendance_percent' => 'nullable|integer|min:0|max:100',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'result_publish_date' => 'nullable|date|after_or_equal:end_date',
@@ -125,6 +147,15 @@ class ExamController extends Controller
             'classes' => 'array',
             'classes.*' => 'exists:classes,id',
         ]);
+
+        $validated = array_merge($validated, $this->plans->normalize($validated));
+        $this->plans->assertSlotAvailable(
+            (int) $validated['academic_year_id'],
+            $validated['classes'] ?? [],
+            $validated['exam_kind'],
+            $validated['term_number'],
+            $exam->id
+        );
 
         $exam->update($validated);
         $exam->classes()->sync($validated['classes'] ?? []);

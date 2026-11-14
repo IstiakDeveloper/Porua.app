@@ -70,11 +70,11 @@ export default function Index({ exams, filters, academicYears }: IndexProps) {
 
     const getExamTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
-            first_term: 'First Term Exam',
-            mid_term: 'Mid Term Exam',
-            final: 'Annual / Final Exam',
-            test: 'Class Test / Quiz',
-            practical: 'Practical Lab Exam',
+            first_term: 'Semester 1',
+            mid_term: 'Semester 2',
+            final: 'Annual',
+            test: 'Class Test',
+            practical: 'Practical',
         };
         return labels[type] || type.replace(/_/g, ' ');
     };
@@ -245,9 +245,9 @@ export default function Index({ exams, filters, academicYears }: IndexProps) {
                             className="w-full sm:w-auto px-3 py-2 text-xs sm:text-sm bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
                         >
                             <option value="">All Exam Types</option>
-                            <option value="first_term">First Term</option>
-                            <option value="mid_term">Mid Term</option>
-                            <option value="final">Final Exam</option>
+                            <option value="first_term">Semester 1</option>
+                            <option value="mid_term">Semester 2</option>
+                            <option value="final">Annual</option>
                             <option value="test">Class Test</option>
                             <option value="practical">Practical</option>
                         </select>

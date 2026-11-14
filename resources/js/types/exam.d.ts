@@ -42,6 +42,9 @@ export interface Exam {
     academic_year_id: number;
     name: string;
     exam_type: 'first_term' | 'mid_term' | 'final' | 'test' | 'practical';
+    exam_kind?: 'class_test' | 'semester' | 'annual';
+    term_number?: number | null;
+    min_attendance_percent?: number | null;
     start_date: string;
     end_date: string;
     result_publish_date?: string;

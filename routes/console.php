@@ -13,3 +13,6 @@ Schedule::command('fees:generate-monthly')->monthlyOn(1, '00:05');
 
 // Daily: mark overdue any pending fees whose due date has passed
 Schedule::command('fees:update-overdue')->dailyAt('00:10');
+
+// Daily: open results on the date the school set
+Schedule::command('exams:publish-due')->dailyAt('00:20');

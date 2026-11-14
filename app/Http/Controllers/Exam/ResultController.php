@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Exam;
 use App\Http\Controllers\Controller;
 use App\Models\Result;
 use App\Models\Exam;
+use App\Models\GradeSetting;
+use App\Models\Mark;
 use App\Models\SchoolClass;
 use App\Models\Setting;
+use App\Models\StudentAttendance;
 use App\Services\ResultCalculationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -79,6 +82,8 @@ class ResultController extends Controller
         Result::where('exam_id', $validated['exam_id'])
             ->where('class_id', $validated['class_id'])
             ->update(['is_published' => true]);
+
+        Exam::where('id', $validated['exam_id'])->update(['marks_locked' => true]);
 
         logActivity('update', "Published exam results for exam ID {$validated['exam_id']} and class ID {$validated['class_id']}", Result::class);
 
@@ -192,30 +197,62 @@ class ResultController extends Controller
         $result->load([
             'student.user',
             'student.schoolClass',
-            'student.section',
+            'student.section.teacher.user',
             'exam.academicYear',
             'schoolClass',
             'student.marks' => fn($q) => $q->where('exam_id', $result->exam_id)->with('subject')
         ]);
 
-        $schoolName = Setting::get('school_name', config('app.name', 'Porua School'));
-        $schoolAddress = Setting::get('school_address', '');
-        $schoolPhone = Setting::get('school_phone', '');
-        $schoolEmail = Setting::get('school_email', '');
-        $schoolLogo = Setting::get('school_logo', '');
+        $student = $result->student;
+        $yearId = $result->exam?->academic_year_id ? (int) $result->exam->academic_year_id : null;
+        $marks = $student->marks->sortBy(fn ($mark) => $mark->subject->name ?? '')->values();
 
-        $gradeSettings = \App\Models\GradeSetting::orderBy('min_marks', 'desc')->get();
+        $highest = Mark::query()
+            ->where('exam_id', $result->exam_id)
+            ->where('class_id', $result->class_id)
+            ->where('is_absent', false)
+            ->selectRaw('subject_id, MAX(obtained_marks) as highest')
+            ->groupBy('subject_id')
+            ->pluck('highest', 'subject_id');
+
+        $attendance = ['days' => 0, 'attended' => 0, 'percent' => null];
+        if ($yearId) {
+            $rows = StudentAttendance::query()
+                ->where('student_id', $student->id)
+                ->where('academic_year_id', $yearId);
+            $days = (clone $rows)->count();
+            $attended = (clone $rows)->whereIn('status', ['present', 'late', 'half_day'])->count();
+            $attendance = [
+                'days' => $days,
+                'attended' => $attended,
+                'percent' => $days > 0 ? round(($attended / $days) * 100, 2) : null,
+            ];
+        }
+
+        $logo = Setting::get('school_logo', '');
+        $logoUrl = $logo
+            ? (str_starts_with($logo, 'http') ? $logo : asset('storage/'.$logo))
+            : null;
+
+        $classTeacher = $student->section?->teacher?->user?->name
+            ?? $student->section?->teacher?->full_name;
 
         return view('exams.marksheet-print', [
             'result' => $result,
-            'student' => $result->student,
-            'marks' => $result->student->marks,
-            'gradeSettings' => $gradeSettings,
-            'schoolName' => $schoolName,
-            'schoolAddress' => $schoolAddress,
-            'schoolPhone' => $schoolPhone,
-            'schoolEmail' => $schoolEmail,
-            'schoolLogo' => $schoolLogo,
+            'student' => $student,
+            'marks' => $marks,
+            'highest' => $highest,
+            'attendance' => $attendance,
+            'classTeacher' => $classTeacher,
+            'gradeSettings' => GradeSetting::scaleForYear($yearId),
+            'schoolName' => Setting::get('school_name', config('app.name', 'Porua School')),
+            'schoolAddress' => Setting::get('school_address', ''),
+            'schoolPhone' => Setting::get('school_phone', ''),
+            'schoolEmail' => Setting::get('school_email', ''),
+            'schoolWebsite' => Setting::get('school_website', ''),
+            'schoolCode' => Setting::get('school_code', ''),
+            'establishedYear' => Setting::get('established_year', ''),
+            'schoolLogo' => $logoUrl,
         ]);
     }
 

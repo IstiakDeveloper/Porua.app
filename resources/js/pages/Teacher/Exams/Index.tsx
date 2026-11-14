@@ -1,6 +1,6 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { FileText, Calendar, Edit3, Eye, Shield, Award, Clock, MapPin, CheckCircle2 } from 'lucide-react';
 import FormPageHeader from '@/Components/FormPageHeader';
 import { formatTimeRange, formatWhen } from '@/utils/datetime';
@@ -14,6 +14,7 @@ interface Exam {
     class_name: string;
     section_name: string;
     is_published: boolean;
+    exam_kind?: string;
     total_marks: number;
 }
 
@@ -90,9 +91,12 @@ export default function Index({ exams = [], invigilationDuties = [] }: Props) {
                             <FileText className="w-4 h-4 text-indigo-600" />
                             <h3 className="text-sm font-semibold text-slate-900">Examinations & Mark Sheets</h3>
                         </div>
-                        <span className="text-xs font-semibold text-slate-500">
-                            {exams.length} Exam Papers
-                        </span>
+                        <Link
+                            href="/teacher/exams/class-tests/create"
+                            className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
+                        >
+                            New class test
+                        </Link>
                     </div>
 
                     {exams && exams.length > 0 ? (
@@ -133,6 +137,15 @@ export default function Index({ exams = [], invigilationDuties = [] }: Props) {
                                             <Edit3 className="w-3.5 h-3.5" />
                                             Enter Marks
                                         </Link>
+                                        {exam.exam_kind === 'class_test' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => router.post(`/teacher/exams/${exam.id}/publish-class-test`)}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200"
+                                            >
+                                                Publish
+                                            </button>
+                                        )}
                                         <Link
                                             href={`/teacher/exams/marks/view?exam_id=${exam.id}&subject_id=${exam.subject_id}`}
                                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"

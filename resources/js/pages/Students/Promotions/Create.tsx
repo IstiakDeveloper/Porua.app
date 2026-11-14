@@ -48,6 +48,7 @@ interface PromotionStudent {
     default_section_id: number | null;
     result_status: string | null;
     result_summary: string | null;
+    suggested_roll?: string | null;
     already_promoted: boolean;
 }
 
@@ -558,7 +559,7 @@ export default function Create({ academicYears, classes }: Props) {
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-semibold text-slate-900 truncate">{student.first_name} {student.last_name}</p>
                                                         <p className="text-[11px] text-slate-400 font-mono truncate">
-                                                            {student.class_name || 'No class'}{student.section_name ? ` · ${student.section_name}` : ''} · Adm: {student.admission_number}{student.roll_number ? ` · Roll ${student.roll_number}` : ''}
+                                                            {student.class_name || 'No class'}{student.section_name ? ` · ${student.section_name}` : ''} · Adm: {student.admission_number}{student.roll_number ? ` · Roll ${student.roll_number}` : ''}{student.suggested_roll ? ` · Next roll ${student.suggested_roll}` : ''}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -571,7 +572,7 @@ export default function Create({ academicYears, classes }: Props) {
                                                             {student.result_summary}
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">No published result</span>
+                                                        <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">No published annual result</span>
                                                     )}
                                                 </div>
 

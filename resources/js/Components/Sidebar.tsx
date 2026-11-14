@@ -126,7 +126,9 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
                     { name: 'My Exams', href: '/teacher/exams', icon: <BookCopy className={iconClass} />, roles: ['Teacher'] },
                     { name: 'Schedules', href: '/exam-schedules', icon: <Calendar className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
                     { name: 'Marks', href: '/marks', icon: <PenLine className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
+                    { name: 'Grade Scale', href: '/grade-settings', icon: <Award className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
                     { name: 'Results', href: '/results', icon: <Trophy className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
+                    { name: 'Rechecks', href: '/mark-rechecks', icon: <PenLine className={iconClass} />, roles: ['Super Admin', 'Admin', 'Principal'] },
                 ],
             },
         ],
@@ -244,6 +246,7 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
                 children: [
                     { name: 'My Exams', href: '/student/exams', icon: <FileText className={iconClass} />, roles: ['Student'] },
                     { name: 'My Results', href: '/student/results', icon: <Trophy className={iconClass} />, roles: ['Student'] },
+                    { name: 'Year Sheet', href: '/student/year-sheet', icon: <Award className={iconClass} />, roles: ['Student'] },
                 ],
             },
             { name: 'Fees & Invoices', href: '/student/fees', icon: <DollarSign className={iconClass} />, roles: ['Student'] },
@@ -259,6 +262,7 @@ const getMenuCategories = (t: Terminology): MenuCategory[] => [
         items: [
             { name: 'Attendance', href: '/parent/attendance', icon: <ClipboardCheck className={iconClass} />, roles: ['Parent'] },
             { name: 'Results', href: '/parent/exams', icon: <Award className={iconClass} />, roles: ['Parent'] },
+            { name: 'Year Sheet', href: '/parent/exams/year-sheet', icon: <FileText className={iconClass} />, roles: ['Parent'] },
             { name: 'Fees', href: '/parent/fees', icon: <DollarSign className={iconClass} />, roles: ['Parent'] },
             { name: 'Calendar', href: '/parent/calendar', icon: <CalendarDays className={iconClass} />, roles: ['Parent'] },
             { name: 'Notices', href: '/parent/notices', icon: <Megaphone className={iconClass} />, roles: ['Parent'] },

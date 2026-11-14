@@ -100,9 +100,14 @@ class PromotionService
                 'default_section_id' => $defaultSection?->id,
                 'result_status' => $result?->result_status,
                 'result_summary' => $this->resultSummary($result),
+                'gpa' => $result ? (float) $result->gpa : null,
+                'obtained_marks' => $result ? (float) $result->obtained_marks : null,
                 'already_promoted' => $alreadyPromoted->has($student->id),
             ];
         })->values();
+
+        $takenForPreview = $this->takenRolls($toYearId, $sectionIds->filter()->unique()->all());
+        $payload = $this->attachSuggestedRolls($payload, $takenForPreview);
 
         $feeClassIds = $classIds->filter()->unique()->isEmpty()
             ? []
@@ -199,6 +204,16 @@ class PromotionService
                 'first_name' => $student->first_name,
                 'last_name' => $student->last_name,
             ];
+        });
+
+        $annual = $this->latestResults($fromYearId, $rows->pluck('student_id'));
+        $rows = $rows->map(function (array $row) use ($annual) {
+            $result = $annual->get($row['student_id']);
+            $row['result_status'] = $result?->result_status;
+            $row['gpa'] = $result?->gpa;
+            $row['obtained_marks'] = $result?->obtained_marks;
+
+            return $row;
         });
 
         $rolls = $this->assignRolls($rows, $toYearId);
@@ -349,12 +364,7 @@ class PromotionService
 
         foreach ($moving->groupBy('to_section_id') as $sectionId => $group) {
             $used = array_fill_keys($taken[(int) $sectionId] ?? [], true);
-            $sorted = $group->sort(function (array $a, array $b) {
-                $left = mb_strtolower(trim($a['first_name'].' '.$a['last_name']), 'UTF-8');
-                $right = mb_strtolower(trim($b['first_name'].' '.$b['last_name']), 'UTF-8');
-
-                return $left <=> $right;
-            })->values();
+            $sorted = $group->sort($this->meritComparator())->values();
 
             $number = 1;
             foreach ($sorted as $row) {
@@ -368,6 +378,76 @@ class PromotionService
         }
 
         return $rolls;
+    }
+
+    /**
+     * @param  array<int, array<int, int>>  $taken
+     */
+    private function attachSuggestedRolls(Collection $students, array $taken): Collection
+    {
+        $withRoll = [];
+
+        foreach ($students->groupBy(fn (array $student) => $student['default_section_id'] ?: 0) as $sectionId => $group) {
+            if (! $sectionId) {
+                foreach ($group as $student) {
+                    $student['suggested_roll'] = null;
+                    $withRoll[$student['id']] = $student;
+                }
+                continue;
+            }
+
+            $used = array_fill_keys($taken[(int) $sectionId] ?? [], true);
+            $number = 1;
+            $sorted = $group
+                ->reject(fn (array $student) => (bool) ($student['already_promoted'] ?? false))
+                ->sort($this->meritComparator())
+                ->values();
+
+            foreach ($group as $student) {
+                if ($student['already_promoted'] ?? false) {
+                    $student['suggested_roll'] = null;
+                    $withRoll[$student['id']] = $student;
+                }
+            }
+
+            foreach ($sorted as $student) {
+                while (isset($used[$number])) {
+                    $number++;
+                }
+                $student['suggested_roll'] = (string) $number;
+                $used[$number] = true;
+                $number++;
+                $withRoll[$student['id']] = $student;
+            }
+        }
+
+        return $students->map(fn (array $student) => $withRoll[$student['id']] ?? $student)->values();
+    }
+
+    private function meritComparator(): \Closure
+    {
+        return function (array $a, array $b) {
+            $weight = ['pass' => 3, 'fail' => 2, 'absent' => 1];
+            $left = $weight[$a['result_status'] ?? ''] ?? 0;
+            $right = $weight[$b['result_status'] ?? ''] ?? 0;
+
+            if ($left !== $right) {
+                return $right <=> $left;
+            }
+
+            if (($a['result_status'] ?? '') === 'pass' && (float) ($a['gpa'] ?? 0) !== (float) ($b['gpa'] ?? 0)) {
+                return ((float) $b['gpa']) <=> ((float) $a['gpa']);
+            }
+
+            if ((float) ($a['obtained_marks'] ?? 0) !== (float) ($b['obtained_marks'] ?? 0)) {
+                return ((float) $b['obtained_marks']) <=> ((float) $a['obtained_marks']);
+            }
+
+            $nameA = mb_strtolower(trim(($a['first_name'] ?? '').' '.($a['last_name'] ?? '')), 'UTF-8');
+            $nameB = mb_strtolower(trim(($b['first_name'] ?? '').' '.($b['last_name'] ?? '')), 'UTF-8');
+
+            return $nameA <=> $nameB;
+        };
     }
 
     private function suggestStatus(?string $resultStatus, bool $hasNextClass): ?string
@@ -412,6 +492,7 @@ class PromotionService
             ->select('results.*')
             ->join('exams', 'exams.id', '=', 'results.exam_id')
             ->where('exams.academic_year_id', $yearId)
+            ->where('exams.exam_kind', 'annual')
             ->whereNull('exams.deleted_at')
             ->where('results.is_published', true)
             ->whereIn('results.student_id', $studentIds)

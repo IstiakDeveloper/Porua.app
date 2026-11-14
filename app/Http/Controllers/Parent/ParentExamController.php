@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Parent;
 use App\Http\Controllers\Controller;
 use App\Models\ExamSchedule;
 use App\Models\Mark;
+use App\Models\MarkRecheck;
 use App\Models\Result;
+use App\Services\ExamYearSheetService;
 use App\Support\ParentPortal;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -56,6 +58,7 @@ class ParentExamController extends Controller
         // Get published results
         $results = Result::where('student_id', $studentId)
             ->where('is_published', true)
+            ->whereHas('exam', fn ($q) => $q->where('exam_kind', '!=', 'class_test'))
             ->with('exam')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -125,6 +128,7 @@ class ParentExamController extends Controller
             ],
             'result' => [
                 'id' => $result->id,
+                'exam_id' => $result->exam_id,
                 'exam_name' => $result->exam->name ?? 'N/A',
                 'total_marks' => (float) $result->total_marks,
                 'obtained_marks' => (float) $result->obtained_marks,
@@ -137,8 +141,14 @@ class ParentExamController extends Controller
                 'pass_status' => ucfirst($result->result_status ?? 'pass'),
                 'result_status' => $result->result_status,
             ],
+            'pending_subject_ids' => MarkRecheck::query()
+                ->where('exam_id', $result->exam_id)
+                ->where('student_id', $result->student_id)
+                ->where('status', 'pending')
+                ->pluck('subject_id'),
             'marks' => $marks->map(function ($mark) {
                 return [
+                    'subject_id' => $mark->subject_id,
                     'subject' => $mark->subject->name ?? 'N/A',
                     'theory_marks' => $mark->theory_marks,
                     'practical_marks' => $mark->practical_marks,
@@ -150,5 +160,51 @@ class ParentExamController extends Controller
                 ];
             }),
         ]);
+    }
+
+    public function yearSheet(Request $request)
+    {
+        $parent = ParentPortal::parent($request->user());
+        $children = ParentPortal::children($parent);
+        $studentId = $request->input('student_id');
+        $student = $studentId
+            ? $children->firstWhere('id', (int) $studentId)
+            : $children->first();
+
+        if (! $student) {
+            abort(404);
+        }
+
+        return Inertia::render('Exams/YearSheet', [
+            'backUrl' => '/parent/exams'.($student ? '?student_id='.$student->id : ''),
+            'recheckUrl' => null,
+            'student' => [
+                'full_name' => $student->full_name,
+                'class_name' => $student->schoolClass->name ?? 'N/A',
+                'section_name' => $student->section->name ?? 'N/A',
+                'roll_number' => $student->roll_number,
+            ],
+            'sheet' => app(ExamYearSheetService::class)->forStudent($student),
+        ]);
+    }
+
+    public function storeRecheck(Request $request)
+    {
+        $parent = ParentPortal::parent($request->user());
+        $validated = $request->validate([
+            'student_id' => ['required', 'exists:students,id'],
+            'exam_id' => ['required', 'exists:exams,id'],
+            'subject_id' => ['required', 'exists:subjects,id'],
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+
+        $student = ParentPortal::children($parent)->firstWhere('id', (int) $validated['student_id']);
+        if (! $student) {
+            abort(403);
+        }
+
+        MarkRecheck::open($student, $request->user()->id, (int) $validated['exam_id'], (int) $validated['subject_id'], $validated['reason']);
+
+        return back()->with('success', 'Recheck requested. The school will review it.');
     }
 }

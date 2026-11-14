@@ -111,10 +111,17 @@ export default function Index({ student, children, upcomingExams = [], results =
 
                         {/* 2. Published Exam Results */}
                         <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-3">
-                            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100">
-                                <Award className="w-4 h-4 text-indigo-600" />
-                                Published Term Marksheets ({results.length})
-                            </h2>
+                            <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Award className="w-4 h-4 text-indigo-600" />
+                                    Published Term Marksheets ({results.length})
+                                </h2>
+                                {student && (
+                                    <Link href={`/parent/exams/year-sheet?student_id=${student.id}`} className="text-[11px] font-semibold text-indigo-700">
+                                        Year sheet
+                                    </Link>
+                                )}
+                            </div>
 
                             {results.length === 0 ? (
                                 <p className="text-xs text-slate-500 py-4">No published exam results recorded for this student yet.</p>

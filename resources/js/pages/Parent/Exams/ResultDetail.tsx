@@ -1,5 +1,5 @@
-import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ParentPage from '@/Components/Parent/ParentPage';
 import { route } from '@/Components/Parent/route';
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 interface Mark {
+    subject_id?: number;
     subject: string;
     theory_marks: number | null;
     practical_marks: number | null;
@@ -26,9 +27,10 @@ interface Mark {
 }
 
 interface Props {
-    student: { full_name: string; roll_number: string; class_name: string; section_name: string };
+    student: { id?: number; full_name: string; roll_number: string; class_name: string; section_name: string };
     result: {
         id: number;
+        exam_id?: number;
         exam_name: string;
         total_marks: number;
         obtained_marks: number;
@@ -41,10 +43,13 @@ interface Props {
         pass_status: string;
     };
     marks: Mark[];
+    pending_subject_ids?: number[];
 }
 
-export default function ResultDetail({ student, result, marks = [] }: Props) {
+export default function ResultDetail({ student, result, marks = [], pending_subject_ids = [] }: Props) {
     const normalized = (result.pass_status || '').trim().toLowerCase();
+    const [subjectId, setSubjectId] = useState(marks.find((mark) => mark.subject_id)?.subject_id ? String(marks.find((mark) => mark.subject_id)?.subject_id) : '');
+    const [reason, setReason] = useState('');
     const isPass = normalized === 'pass' || normalized === 'passed';
     const isFail = normalized === 'fail' || normalized === 'failed';
     const statusLabel = result.pass_status?.trim() ? result.pass_status.toUpperCase() : 'PENDING';
@@ -244,6 +249,43 @@ export default function ResultDetail({ student, result, marks = [] }: Props) {
                         </div>
                     )}
                 </div>
+
+                <form
+                    className="rounded-xl border border-slate-200 bg-white p-4 space-y-2"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (!student.id || !result.exam_id) return;
+                        router.post('/parent/rechecks', {
+                            student_id: student.id,
+                            exam_id: result.exam_id,
+                            subject_id: subjectId,
+                            reason,
+                        });
+                    }}
+                >
+                    <p className="text-xs font-semibold text-slate-800">Ask for a recheck</p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs">
+                            {marks.filter((mark) => mark.subject_id).map((mark) => (
+                                <option key={mark.subject_id} value={mark.subject_id}>
+                                    {mark.subject}
+                                    {pending_subject_ids.includes(Number(mark.subject_id)) ? ' (pending)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            required
+                            minLength={10}
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            placeholder="Why should this subject be checked again?"
+                            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                        />
+                        <button type="submit" className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
+                            Submit
+                        </button>
+                    </div>
+                </form>
 
                 {/* 4. Evaluator Remarks */}
                 {result.remarks && (

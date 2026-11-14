@@ -44,6 +44,7 @@ use App\Http\Controllers\Exam\ExamScheduleController;
 use App\Http\Controllers\Exam\ExamSeatPlanController;
 use App\Http\Controllers\Exam\GradeSettingController;
 use App\Http\Controllers\Exam\MarkController;
+use App\Http\Controllers\Exam\MarkRecheckController;
 use App\Http\Controllers\Exam\ResultController;
 use App\Http\Controllers\Fee\FeeCollectionController;
 use App\Http\Controllers\Fee\FeeStructureController;
@@ -387,6 +388,10 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         // Marks & Results
         Route::resource('marks', MarkController::class)->except(['show']);
         Route::get('marks/students', [MarkController::class, 'getStudents'])->name('marks.students');
+        Route::post('marks/verify', [MarkController::class, 'verify'])->name('marks.verify');
+
+        Route::get('mark-rechecks', [MarkRecheckController::class, 'index'])->name('mark-rechecks.index');
+        Route::post('mark-rechecks/{recheck}/review', [MarkRecheckController::class, 'review'])->name('mark-rechecks.review');
 
         Route::get('results/tabulation', [ResultController::class, 'tabulation'])->name('results.tabulation');
         Route::get('results/tabulation/print', [ResultController::class, 'printTabulation'])->name('results.tabulation.print');
@@ -395,6 +400,7 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         Route::post('results/publish', [ResultController::class, 'publish'])->name('results.publish');
         Route::get('students/{student}/exams/{exam}/result', [ResultController::class, 'studentResult'])->name('results.student');
 
+        Route::post('grade-settings/install', [GradeSettingController::class, 'installNational'])->name('grade-settings.install');
         Route::resource('grade-settings', GradeSettingController::class)->only(['index', 'store', 'update', 'destroy']);
     });
 
@@ -637,6 +643,8 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
         // Exams & Results
         Route::get('/exams', [\App\Http\Controllers\Student\StudentExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/{exam}', [\App\Http\Controllers\Student\StudentExamController::class, 'show'])->name('exams.show');
+        Route::get('/year-sheet', [\App\Http\Controllers\Student\StudentExamController::class, 'yearSheet'])->name('year-sheet');
+        Route::post('/rechecks', [\App\Http\Controllers\Student\StudentExamController::class, 'storeRecheck'])->name('rechecks.store');
         Route::get('/results', [\App\Http\Controllers\Student\StudentExamController::class, 'results'])->name('results.index');
         Route::get('/results/{result}', [\App\Http\Controllers\Student\StudentExamController::class, 'resultDetail'])->name('results.show');
         Route::get('/results/{result}/download', [\App\Http\Controllers\Student\StudentExamController::class, 'downloadMarksheet'])->name('results.download');
@@ -698,6 +706,9 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
 
         // Exams & Marks
         Route::get('/exams', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'index'])->name('exams.index');
+        Route::get('/exams/class-tests/create', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'createClassTest'])->name('exams.class-tests.create');
+        Route::post('/exams/class-tests', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'storeClassTest'])->name('exams.class-tests.store');
+        Route::post('/exams/{exam}/publish-class-test', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'publishClassTest'])->name('exams.class-tests.publish');
         Route::get('/exams/marks/entry', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'markEntry'])->name('exams.marks.entry');
         Route::post('/exams/marks/store', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'storeMarks'])->name('exams.marks.store');
         Route::get('/exams/marks/view', [\App\Http\Controllers\Teacher\TeacherExamController::class, 'viewMarks'])->name('exams.marks.view');
@@ -737,6 +748,8 @@ Route::middleware(['auth', 'restrict.admin.mutations'])->group(function () {
 
         // Exams & Results
         Route::get('/exams', [\App\Http\Controllers\Parent\ParentExamController::class, 'index'])->name('exams.index');
+        Route::get('/exams/year-sheet', [\App\Http\Controllers\Parent\ParentExamController::class, 'yearSheet'])->name('exams.year-sheet');
+        Route::post('/rechecks', [\App\Http\Controllers\Parent\ParentExamController::class, 'storeRecheck'])->name('rechecks.store');
         Route::get('/exams/result/{result}', [\App\Http\Controllers\Parent\ParentExamController::class, 'resultDetail'])->name('exams.result');
         Route::get('/exams/result/{result}/print', [\App\Http\Controllers\Exam\ResultController::class, 'printMarksheet'])->name('exams.result.print');
 

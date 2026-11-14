@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     Award,
     Printer,
@@ -26,6 +26,7 @@ interface Student {
 
 interface Result {
     id: number;
+    exam_id?: number;
     exam_name: string;
     exam_date: string;
     total_marks: number;
@@ -41,6 +42,7 @@ interface Result {
 
 interface Mark {
     id: number;
+    subject_id?: number;
     subject_name: string;
     theory_marks: number | null;
     practical_marks: number | null;
@@ -56,11 +58,15 @@ interface Props {
     student: Student;
     result: Result;
     marks: Mark[];
+    pending_subject_ids?: number[];
 }
 
-export default function ResultDetail({ student, result, marks = [] }: Props) {
+export default function ResultDetail({ student, result, marks = [], pending_subject_ids = [] }: Props) {
     const institute = useInstitute();
     const isPassed = (result?.result_status || '').toLowerCase() === 'pass';
+    const [subjectId, setSubjectId] = useState(marks[0]?.subject_id ? String(marks[0].subject_id) : '');
+    const [reason, setReason] = useState('');
+    const [sending, setSending] = useState(false);
 
     return (
         <AuthenticatedLayout>
@@ -201,6 +207,51 @@ export default function ResultDetail({ student, result, marks = [] }: Props) {
                             </tbody>
                         </table>
                     </div>
+
+                    <form
+                        className="print:hidden mt-4 rounded-lg border border-slate-200 p-4 space-y-2"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            if (!result.exam_id) return;
+                            setSending(true);
+                            router.post('/student/rechecks', {
+                                exam_id: result.exam_id,
+                                subject_id: subjectId,
+                                reason,
+                            }, { onFinish: () => setSending(false) });
+                        }}
+                    >
+                        <p className="text-xs font-semibold text-slate-800">Ask for a recheck</p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <select
+                                value={subjectId}
+                                onChange={(event) => setSubjectId(event.target.value)}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                            >
+                                {marks.filter((mark) => mark.subject_id).map((mark) => (
+                                    <option key={mark.id} value={mark.subject_id}>
+                                        {mark.subject_name}
+                                        {pending_subject_ids.includes(Number(mark.subject_id)) ? ' (pending)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                required
+                                minLength={10}
+                                value={reason}
+                                onChange={(event) => setReason(event.target.value)}
+                                placeholder="Why should this subject be checked again?"
+                                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                            />
+                            <button
+                                type="submit"
+                                disabled={sending}
+                                className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                            >
+                                Submit
+                            </button>
+                        </div>
+                    </form>
 
                     {/* Print Signatures Block */}
                     <div className="hidden print:flex items-end justify-between pt-16 px-4 text-xs font-semibold text-slate-700">

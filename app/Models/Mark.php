@@ -25,6 +25,7 @@ class Mark extends Model
         'entered_by',
         'verified_by',
         'verified_at',
+        'recheck_open',
     ];
 
     protected function casts(): array
@@ -37,6 +38,7 @@ class Mark extends Model
             'grade_point' => 'decimal:2',
             'is_absent' => 'boolean',
             'verified_at' => 'datetime',
+            'recheck_open' => 'boolean',
         ];
     }
 

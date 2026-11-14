@@ -42,7 +42,8 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
     const [isDeleting, setIsDeleting] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
-    const [pendingAction, setPendingAction] = useState<'generate' | 'publish' | null>(null);
+    const [pendingAction, setPendingAction] = useState<'generate' | 'publish' | 'verify' | null>(null);
+    const [isVerifying, setIsVerifying] = useState(false);
     const [actionError, setActionError] = useState('');
 
     const handleFilter = (newExamId: string, newClassId: string) => {
@@ -100,6 +101,21 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                 {
                     onFinish: () => {
                         setIsPublishing(false);
+                        setPendingAction(null);
+                    },
+                }
+            );
+            return;
+        }
+
+        if (pendingAction === 'verify') {
+            setIsVerifying(true);
+            router.post(
+                '/marks/verify',
+                { exam_id: examId, class_id: classId },
+                {
+                    onFinish: () => {
+                        setIsVerifying(false);
                         setPendingAction(null);
                     },
                 }
@@ -197,6 +213,17 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                                 Tabulation Sheet
                             </Button>
                         </Link>
+                        <Button
+                            size="md"
+                            variant="outline"
+                            onClick={() => {
+                                if (!requireSelection()) return;
+                                setPendingAction('verify');
+                            }}
+                            loading={isVerifying}
+                        >
+                            Verify Marks
+                        </Button>
                         <Button
                             size="md"
                             variant="outline"
@@ -485,13 +512,15 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
             <Modal
                 show={pendingAction !== null}
                 onClose={() => setPendingAction(null)}
-                title={pendingAction === 'publish' ? 'Publish results' : 'Generate results'}
+                title={pendingAction === 'publish' ? 'Publish results' : pendingAction === 'verify' ? 'Verify marks' : 'Generate results'}
                 maxWidth="md"
             >
                 <p className="text-sm text-slate-600">
                     {pendingAction === 'publish'
                         ? 'Publish these results? Students and parents will be able to open their marksheets right away.'
-                        : 'Calculate GPA, grade, and rank for the selected examination and class?'}
+                        : pendingAction === 'verify'
+                          ? 'Mark every unverified row for this exam and class as verified? Generation uses verified marks only.'
+                          : 'Calculate GPA, grade, and rank for the selected examination and class?'}
                 </p>
                 <div className="mt-5 flex items-center justify-end gap-2">
                     <Button variant="outline" onClick={() => setPendingAction(null)}>
@@ -499,10 +528,10 @@ export default function Index({ results, filters, exams, classes }: IndexProps) 
                     </Button>
                     <Button
                         onClick={confirmPendingAction}
-                        loading={isGenerating || isPublishing}
+                        loading={isGenerating || isPublishing || isVerifying}
                         className={pendingAction === 'publish' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
                     >
-                        {pendingAction === 'publish' ? 'Publish' : 'Generate'}
+                        {pendingAction === 'publish' ? 'Publish' : pendingAction === 'verify' ? 'Verify' : 'Generate'}
                     </Button>
                 </div>
             </Modal>

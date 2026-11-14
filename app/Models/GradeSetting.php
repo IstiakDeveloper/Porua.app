@@ -39,6 +39,31 @@ class GradeSetting extends Model
         return $query->orderBy('order');
     }
 
+    public static function scaleForYear(?int $academicYearId = null)
+    {
+        if ($academicYearId) {
+            $yearScale = static::query()
+                ->where('academic_year_id', $academicYearId)
+                ->orderByDesc('min_marks')
+                ->get();
+
+            if ($yearScale->isNotEmpty()) {
+                return $yearScale;
+            }
+        }
+
+        $schoolScale = static::query()
+            ->whereNull('academic_year_id')
+            ->orderByDesc('min_marks')
+            ->get();
+
+        if ($schoolScale->isNotEmpty()) {
+            return $schoolScale;
+        }
+
+        return static::query()->orderByDesc('min_marks')->get();
+    }
+
     public static function getGradeForMarks($marks, $academicYearId = null)
     {
         $query = self::query();

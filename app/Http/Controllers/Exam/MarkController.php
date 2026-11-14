@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Exam;
 use App\Http\Controllers\Controller;
 use App\Models\Mark;
 use App\Models\Exam;
+use App\Models\Result;
 use App\Models\SchoolClass;
 use App\Models\Section;
 use App\Models\Subject;
 use App\Models\Student;
+use App\Services\MarkGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class MarkController extends Controller
 {
+    public function __construct(private MarkGuard $guard) {}
+
     public function index(Request $request)
     {
         $this->authorize('manage_exams');
@@ -86,6 +90,12 @@ class MarkController extends Controller
             $subjectFullMarks = (float) ($subject->total_marks ?? 100);
 
             foreach ($validated['marks'] as $mark) {
+                $this->guard->assertEditable(
+                    (int) $validated['exam_id'],
+                    (int) $mark['student_id'],
+                    (int) $validated['subject_id']
+                );
+
                 $theory = isset($mark['theory_marks']) && $mark['theory_marks'] !== '' ? (float) $mark['theory_marks'] : null;
                 $practical = isset($mark['practical_marks']) && $mark['practical_marks'] !== '' ? (float) $mark['practical_marks'] : null;
                 $obtained = isset($mark['obtained_marks']) 
@@ -97,7 +107,14 @@ class MarkController extends Controller
                     $obtained = (float) $mark['total_marks'];
                 }
 
-                Mark::updateOrCreate(
+                $existing = Mark::where('exam_id', $validated['exam_id'])
+                    ->where('student_id', $mark['student_id'])
+                    ->where('subject_id', $validated['subject_id'])
+                    ->first();
+                $before = $this->guard->snapshot($existing);
+                $wasRecheck = (bool) ($existing?->recheck_open);
+
+                $saved = Mark::updateOrCreate(
                     [
                         'exam_id' => $validated['exam_id'],
                         'student_id' => $mark['student_id'],
@@ -112,8 +129,27 @@ class MarkController extends Controller
                         'grade' => $mark['grade'] ?? null,
                         'remarks' => $mark['remarks'] ?? null,
                         'entered_by' => auth()->id(),
+                        'verified_by' => auth()->id(),
+                        'verified_at' => now(),
+                        'recheck_open' => false,
                     ]
                 );
+
+                $this->guard->audit(
+                    $saved,
+                    (int) $validated['exam_id'],
+                    (int) $mark['student_id'],
+                    (int) $validated['subject_id'],
+                    $existing ? 'update' : 'create',
+                    $before,
+                    $this->guard->snapshot($saved)
+                );
+
+                if ($wasRecheck) {
+                    Result::where('exam_id', $validated['exam_id'])
+                        ->where('student_id', $mark['student_id'])
+                        ->update(['is_published' => false]);
+                }
             }
 
             DB::commit();
@@ -123,6 +159,9 @@ class MarkController extends Controller
             return redirect()->route('marks.index')
                 ->with('success', 'Marks entered successfully');
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Failed to enter marks: ' . $e->getMessage());
@@ -147,9 +186,41 @@ class MarkController extends Controller
         ]);
     }
 
+    public function verify(Request $request)
+    {
+        $this->authorize('manage_exams');
+
+        $validated = $request->validate([
+            'exam_id' => 'required|exists:exams,id',
+            'class_id' => 'required|exists:classes,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+        ]);
+
+        $query = Mark::query()
+            ->where('exam_id', $validated['exam_id'])
+            ->where('class_id', $validated['class_id'])
+            ->whereNull('verified_by')
+            ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $validated['subject_id']));
+
+        $count = $query->update([
+            'verified_by' => auth()->id(),
+            'verified_at' => now(),
+        ]);
+
+        logActivity('update', "Verified {$count} marks for exam {$validated['exam_id']}", Mark::class);
+
+        return back()->with('success', $count > 0
+            ? "Verified {$count} mark rows."
+            : 'Those marks were already verified.');
+    }
+
     public function destroy(Mark $mark)
     {
         $this->authorize('manage_exams');
+
+        $this->guard->assertEditable($mark->exam_id, $mark->student_id, $mark->subject_id);
+        $before = $this->guard->snapshot($mark);
+        $this->guard->audit($mark, $mark->exam_id, $mark->student_id, $mark->subject_id, 'delete', $before, null);
 
         $mark->delete();
 
